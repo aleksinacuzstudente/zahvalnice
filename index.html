@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
-<meta name="theme-color" content="#f5ecc2" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#051230" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f8b6ba" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#7d133a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -32,19 +32,22 @@
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
   :root {
-    --pozadina: #f5ecc2;   /* Sulpher Yellow */
+    --pozadina: #f8b6ba;   /* Corinthian Pink */
     --povrs: #ffffff;      /* White */
-    --povrs2: #ebd3a2;     /* Ivory Buff */
-    --tekst: #12354e;      /* Dark Tyrian Blue */
-    --tekst2: #547076;     /* Dark Medici Blue */
-    --linija: #ebd3a2;     /* Ivory Buff */
-    --akcent: #005b8d;     /* Helvetia Blue */
+    --povrs2: #e0b3b6;     /* Cameo Pink */
+    --tekst: #7d133a;      /* Pansy Purple */
+    --tekst2: #713b4c;     /* Violet Carmine */
+    --linija: #e0b3b6;     /* Cameo Pink */
+    --akcent: #a62c37;     /* Carmine Red */
+    --na-akcentu: #ffffff;
     --ok: #1a7444;         /* Diamine Green */
     --lose: #a62c37;       /* Carmine Red */
     --upozorenje: #ae5224; /* Burnt Sienna */
-    --kamera: #12354e;     /* Dark Tyrian Blue */
+    --kamera: #7d133a;     /* Pansy Purple */
+    --na-kameri: #f5ecc2;  /* Sulpher Yellow */
     --na-boji: #ffffff;
-    --senka: 0 10px 30px rgba(18, 53, 78, .16);
+    --prsten: rgba(166, 44, 55, .22);
+    --senka: 0 10px 30px rgba(125, 19, 58, .18);
     --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
     --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
     --naslovni: "Space Grotesk", system-ui, sans-serif;
@@ -52,22 +55,26 @@
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --pozadina: #051230; /* Deep Indigo */
-      --povrs: #12354e;    /* Dark Tyrian Blue */
-      --povrs2: #34454c;   /* Slate Color */
+      --pozadina: #7d133a; /* Pansy Purple */
+      --povrs: #a72144;    /* Red */
+      --povrs2: #501345;   /* Cotinga Purple */
       --tekst: #f5ecc2;    /* Sulpher Yellow */
-      --tekst2: #a5c8d1;   /* Light Glaucous Blue */
-      --linija: #34454c;   /* Slate Color */
-      --kamera: #12354e;
-      --senka: 0 10px 30px rgba(0, 0, 0, .45);
+      --tekst2: #fdd4bd;   /* Seashell Pink */
+      --linija: #501345;   /* Cotinga Purple */
+      --akcent: #f5ecc2;   /* Sulpher Yellow */
+      --na-akcentu: #7d133a;
+      --lose: #cc1236;     /* Carmine */
+      --kamera: #501345;   /* Cotinga Purple */
+      --prsten: rgba(245, 236, 194, .3);
+      --senka: 0 10px 30px rgba(30, 0, 15, .45);
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
     background: var(--pozadina); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
-  h1, h2, h3, .naslov, .ime, .broj { font-family: var(--naslovni); }
+  h1, h2, h3, .naslov, .ime { font-family: var(--naslovni); }
   /* Safari na iPhone-u boji svoju donju traku po elementu uz dno ekrana: ovde je to boja pozadine */
-  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: 2px; background: var(--pozadina); z-index: 1; pointer-events: none; }
+  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dno) + 12px); background: var(--pozadina); z-index: 1; pointer-events: none; }
   button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
   button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   .skriveno { display: none !important; }
@@ -99,14 +106,14 @@
   .koraci .vrpca { flex: 1; min-height: 0; min-width: 0; display: flex; transition: transform .45s var(--glatko); }
   .korak { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 0; }
   .korak .oznaka { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--akcent); }
-  @media (prefers-color-scheme: dark) { .korak .oznaka { color: #a5c8d1; } }
+  @media (prefers-color-scheme: dark) { .korak .oznaka { color: var(--tekst2); } }
   .korak h3 { margin: 0; font-size: 20px; font-weight: 800; }
   .korak p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--tekst2); }
   .korak p b { color: var(--tekst); }
   .tacke { display: flex; justify-content: center; gap: 7px; padding-top: 12px; }
   .tacke i { width: 8px; height: 8px; border-radius: 4px; background: var(--linija); transition: width .3s var(--glatko), background .3s; }
   .tacke i.ovde { width: 24px; background: var(--akcent); }
-  @media (prefers-color-scheme: dark) { .tacke i.ovde { background: #a5c8d1; } }
+
   .navigacija { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .navigacija .dugme { min-height: 50px; }
   .navigacija .dugme:disabled { opacity: .4; }
@@ -148,11 +155,11 @@
 
   /* Napredak: Stiglo 3 od 506 i traka u istom redu */
   .napredak { display: flex; align-items: center; gap: 14px; }
-  .napredak .broj { white-space: nowrap; font-size: 17px; font-weight: 500; color: var(--tekst2); }
-  .napredak .broj b { display: inline-block; font-size: 30px; font-weight: 700; color: var(--tekst); font-variant-numeric: tabular-nums; margin: 0 2px; }
+  .napredak .broj { white-space: nowrap; font-family: var(--telo); font-size: 18px; line-height: 1; font-weight: 500; color: var(--tekst2); }
+  .napredak .broj b { display: inline-block; font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
   .napredak .broj b.skok { animation: skok .45s var(--opruga); }
   @keyframes skok { 40% { transform: scale(1.3); color: var(--ok); } }
-  .traka { flex: 1; min-width: 60px; height: 10px; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
+  .traka { flex: 1; min-width: 60px; height: 10px; align-self: center; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
   .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 5px; transition: width .6s var(--glatko); }
 
   /* Kamera zauzima sav preostali prostor; nišan je kvadrat u sredini (jedinice kontejnera) */
@@ -173,24 +180,24 @@
     animation: skeniranje 2.2s ease-in-out infinite; opacity: .9; }
   @keyframes skeniranje { 50% { top: 93%; } }
   .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
-    color: #f5ecc2; background: linear-gradient(transparent, rgba(5, 18, 48, .75)); }
+    color: var(--na-kameri); background: linear-gradient(transparent, rgba(40, 0, 20, .7)); }
   .kamera .pokreni { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-    background: var(--kamera); color: #f5ecc2; font-size: 20px; font-weight: 800; }
+    background: var(--kamera); color: var(--na-kameri); font-size: 20px; font-weight: 800; }
   .kamera .pokreni svg { width: 68px; height: 68px; animation: dise 2s ease-in-out infinite; }
   @keyframes dise { 50% { transform: scale(1.08); opacity: .8; } }
   .kamera .rezerva { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
-    padding: 20px; text-align: center; background: var(--kamera); color: #f5ecc2; }
+    padding: 20px; text-align: center; background: var(--kamera); color: var(--na-kameri); }
   .kamera .rezerva > svg { width: 52px; height: 52px; }
   .kamera .rezerva h3 { margin: 0; font-size: 21px; }
   .kamera .rezerva p { margin: 0; font-size: 15px; line-height: 1.45; opacity: .85; max-width: 320px; }
   .kamera .rezerva .dugme { min-height: 52px; padding: 0 22px; }
-  .kamera .rezerva .sporedno { background: none; box-shadow: none; color: #f5ecc2; text-decoration: underline; min-height: 40px; font-size: 15px; }
+  .kamera .rezerva .sporedno { background: none; box-shadow: none; color: var(--na-kameri); text-decoration: underline; min-height: 40px; font-size: 15px; }
 
   .dugmad { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .dugme { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 58px; border-radius: 16px;
     background: var(--povrs); color: var(--tekst); font-size: 17px; font-weight: 700; box-shadow: var(--senka); }
   .dugme svg { width: 22px; height: 22px; }
-  .dugme.glavno { background: var(--akcent); color: var(--na-boji); font-size: 19px; min-height: 62px; }
+  .dugme.glavno { background: var(--akcent); color: var(--na-akcentu); font-size: 19px; min-height: 62px; }
 
   /* Rezultat preko celog ekrana: talas iz sredine, ikonica iskače, kvačica se iscrtava */
   .rezultat { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
@@ -233,7 +240,7 @@
   .pretraga .zatvori svg { width: 22px; height: 22px; }
   .pretraga input { width: 100%; font-size: 18px; padding: 15px 16px; border-radius: 14px; border: 2px solid var(--linija);
     background: var(--povrs); color: var(--tekst); outline: none; transition: border-color .2s, box-shadow .2s; }
-  .pretraga input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px rgba(0, 91, 141, .18); }
+  .pretraga input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px var(--prsten); }
   .pretraga input::placeholder { color: var(--tekst2); }
   .pretraga ul { list-style: none; margin: 10px auto 0; padding: 0 0 calc(var(--dno) + 10px); overflow-y: auto; flex: 1; min-height: 0;
     overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
