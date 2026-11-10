@@ -61,17 +61,68 @@
   .skriveno { display: none !important; }
 
   .ekran { height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
-    gap: 14px; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
+    gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
   @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
-  /* Prijava */
-  .prijava { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 18px; text-align: center; }
-  .prijava .logo { width: 88px; height: 88px; margin: 0 auto 6px; border-radius: 24px; box-shadow: var(--senka);
-    animation: lebdi 4s ease-in-out infinite; }
-  @keyframes lebdi { 50% { transform: translateY(-6px); } }
-  .prijava h2 { margin: 0; font-size: 28px; font-weight: 800; }
-  .prijava p { margin: 0; color: var(--tekst2); font-size: 16px; line-height: 1.5; }
-  .prijava .poruka { color: var(--lose); font-weight: 700; min-height: 1.5em; }
+  /* Prijava sa uputstvom korak po korak */
+  .prijava { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .prijava .naslovna { display: flex; align-items: center; gap: 12px; }
+  .prijava .logo { width: 52px; height: 52px; border-radius: 14px; box-shadow: var(--senka); animation: lebdi 4s ease-in-out infinite; }
+  @keyframes lebdi { 50% { transform: translateY(-4px); } }
+  .prijava h2 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; }
+  .prijava .podnaslov { font-size: 14px; color: var(--tekst2); margin-top: 2px; }
+  .prijava .poruka { color: var(--lose); font-weight: 700; text-align: center; margin: 0; min-height: 0; }
+  .prijava .poruka:empty { display: none; }
+  .koraci { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--povrs); border-radius: 22px; box-shadow: var(--senka); padding: 0 0 12px; overflow: hidden; }
+  .koraci .vrpca { flex: 1; min-height: 0; min-width: 0; display: flex; transition: transform .45s var(--glatko); }
+  .korak { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 0; }
+  .korak .oznaka { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--akcent); }
+  @media (prefers-color-scheme: dark) { .korak .oznaka { color: #a5c8d1; } }
+  .korak h3 { margin: 0; font-size: 20px; font-weight: 800; }
+  .korak p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--tekst2); }
+  .korak p b { color: var(--tekst); }
+  .tacke { display: flex; justify-content: center; gap: 7px; padding-top: 12px; }
+  .tacke i { width: 8px; height: 8px; border-radius: 4px; background: var(--linija); transition: width .3s var(--glatko), background .3s; }
+  .tacke i.ovde { width: 24px; background: var(--akcent); }
+  @media (prefers-color-scheme: dark) { .tacke i.ovde { background: #a5c8d1; } }
+  .navigacija { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .navigacija .dugme { min-height: 50px; }
+  .navigacija .dugme:disabled { opacity: .4; }
+
+  /* Crtež ekrana u uputstvu (izmišljeni nalozi, ne prava slika) */
+  .crtez { flex: 1; min-height: 150px; max-height: 340px; position: relative; border-radius: 14px; overflow: hidden; background: #fff; color: #202124;
+    border: 1px solid #dadce0; font-family: Roboto, system-ui, sans-serif; font-size: 12px; overflow-wrap: anywhere; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .crtez.tamni { background: #131314; color: #e3e3e3; border-color: #3c4043; }
+  .crtez .g { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5f6368; padding-bottom: 6px; border-bottom: 1px solid #e0e0e0; }
+  .crtez.tamni .g { color: #c4c7c5; border-color: #3c4043; }
+  .crtez .g b { font-weight: 800; font-size: 14px; background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .crtez .velik { font-size: 18px; line-height: 1.2; }
+  .crtez .sitno { color: #5f6368; line-height: 1.4; }
+  .crtez.tamni .sitno { color: #c4c7c5; }
+  .crtez .nalog { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid #e0e0e0; }
+  .crtez.tamni .nalog { border-color: #3c4043; }
+  .crtez .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; flex: none; }
+  .crtez .nalog small { display: block; color: #8e918f; }
+  .crtez .trougao { width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 30px solid #d93025; position: relative; }
+  .crtez .red { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .crtez .plavo { background: #4285f4; color: #fff; font-weight: 700; padding: 7px 10px; border-radius: 4px; font-size: 11px; }
+  .crtez .veza { text-decoration: underline; color: #5f6368; }
+  .crtez .kvacica { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .crtez .kvacica i { width: 16px; height: 16px; border: 2px solid #a8c7fa; border-radius: 3px; flex: none; display: grid; place-items: center; }
+  .crtez .kvacica i::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #062e6f; border-bottom: 2px solid #062e6f; transform: rotate(-45deg) translate(1px, -1px); }
+  .crtez .kvacica.puno i { background: #a8c7fa; }
+  .crtez .okvir-dugme { border: 1px solid #8e918f; border-radius: 20px; padding: 7px 0; text-align: center; color: #a8c7fa; flex: 1; }
+  .crtez .ios { margin: auto; width: 82%; background: rgba(242, 242, 247, .96); border-radius: 14px; text-align: center; overflow: hidden; color: #000; }
+  .crtez .ios div { padding: 12px 10px; font-weight: 600; font-size: 12px; }
+  .crtez .ios .dugmici { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #c6c6c8; padding: 0; }
+  .crtez .ios .dugmici span { padding: 9px; color: #007aff; font-weight: 500; }
+  .crtez .ios .dugmici span + span { border-left: 1px solid #c6c6c8; font-weight: 700; }
+  .crtez.zeleno { background: var(--ok); color: #fff; align-items: center; justify-content: center; text-align: center; border: 0; }
+  .crtez.zeleno svg { width: 48px; height: 48px; }
+  .crtez.zeleno .velik { font-weight: 800; }
+  .dodir { position: relative; border-radius: 6px; }
+  .dodir::after { content: ""; position: absolute; inset: -5px; border: 3px solid #f59e0b; border-radius: 10px; animation: dodir 1.4s ease-out infinite; pointer-events: none; }
+  @keyframes dodir { 0% { opacity: 1; transform: scale(.92); } 80%, 100% { opacity: 0; transform: scale(1.12); } }
 
   /* Zaglavlje */
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -117,8 +168,8 @@
   .dugme.glavno { background: var(--akcent); color: var(--na-boji); font-size: 19px; min-height: 62px; }
 
   /* Rezultat preko celog ekrana: talas iz sredine, ikonica iskače, kvačica se iscrtava */
-  .rezultat { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 14px; padding: 32px 24px calc(var(--dno) + 32px); text-align: center; color: var(--na-boji);
+  .rezultat { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 14px; padding: calc(var(--vrh) + 13vh) 24px calc(var(--dno) + 120px); text-align: center; color: var(--na-boji);
     animation: talas .45s var(--glatko) both; }
   .rezultat.ok { background: var(--ok); }
   .rezultat.lose { background: var(--lose); }
@@ -136,7 +187,11 @@
   .rezultat .naslov { font-size: 22px; font-weight: 800; letter-spacing: .1em; animation-delay: .15s; }
   .rezultat .ime { font-size: clamp(32px, 9vw, 50px); font-weight: 800; line-height: 1.1; animation-delay: .22s; }
   .rezultat .detalj { font-size: 19px; opacity: .92; line-height: 1.45; animation-delay: .29s; }
-  .rezultat .dalje { position: absolute; bottom: calc(var(--dno) + 26px); left: 0; right: 0; font-size: 15px; opacity: .85; }
+  .rezultat .dalje { position: absolute; bottom: calc(var(--dno) + 28px); left: 20px; right: 20px; max-width: 420px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 20px; border-radius: 999px; border: 2px solid rgba(255,255,255,.85); background: rgba(255,255,255,.16);
+    font-size: 18px; font-weight: 800; animation: ulaz .4s var(--glatko) .5s both, puls 1.6s ease-in-out 1s infinite; }
+  .rezultat .dalje svg { width: 24px; height: 24px; animation: none; }
+  @keyframes puls { 50% { box-shadow: 0 0 0 10px rgba(255,255,255,.12); background: rgba(255,255,255,.26); } }
   .rezultat .vreme { position: absolute; bottom: 0; left: 0; height: 5px; background: rgba(255,255,255,.6); animation: odbrojava 1.8s linear forwards; }
   @keyframes odbrojava { from { width: 100%; } to { width: 0; } }
 
@@ -179,14 +234,94 @@
   <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path class="potez" d="M9 12l2 2l4 -4"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path class="potez" d="M10 10l4 4m0 -4l-4 4"/></symbol>
   <symbol id="i-pazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-dodir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5"/><path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"/></symbol>
   <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
 </svg>
 
 <div class="ekran" id="ekran-prijava">
   <div class="prijava">
-    <img class="logo" src="ikona-192.png" alt="">
-    <h2>Dolazak gostiju</h2>
-    <p>Dodela zahvalnica.<br>Prijavite se Google nalogom sa kojim je podeljena tabela gostiju.</p>
+    <div class="naslovna">
+      <img class="logo" src="ikona-192.png" alt="">
+      <div><h2>Dolazak gostiju</h2><div class="podnaslov">Dodela zahvalnica · uputstvo za prijavu</div></div>
+    </div>
+    <div class="koraci" id="koraci">
+      <div class="vrpca" id="vrpca">
+
+        <div class="korak">
+          <div class="oznaka">KORAK 1 OD 6</div>
+          <h3>Izaberite nalog</h3>
+          <div class="crtez tamni">
+            <div class="g"><b>G</b> Sign in with Google</div>
+            <div class="velik">Choose an account</div>
+            <div class="nalog dodir"><span class="avatar" style="background:#1a7444">M</span><div>Marko Marković<small>marko.markovic@gmail.com</small></div></div>
+            <div class="nalog"><span class="avatar" style="background:#a62c37">J</span><div>Jelena Petrović<small>jelena.petrovic@gmail.com</small></div></div>
+          </div>
+          <p>Posle <b>Prijavite se</b> izaberite Gmail nalog sa kojim je štab podelio tabelu gostiju. Ako piše <b>You're signing back in</b>, samo <b>Continue</b>.</p>
+        </div>
+
+        <div class="korak">
+          <div class="oznaka">KORAK 2 OD 6</div>
+          <h3>Dodirnite Advanced</h3>
+          <div class="crtez">
+            <div class="trougao"></div>
+            <div class="velik">Google hasn't verified this app</div>
+            <div class="sitno">The app is requesting access to sensitive info in your Google Account…</div>
+            <div class="red"><span class="veza dodir">Advanced</span><span class="plavo">BACK TO SAFETY</span></div>
+          </div>
+          <p>Google upozorava jer aplikacija nije u njegovom katalogu. Aplikacija je štabova. <b>Ne dirajte plavo dugme</b>, dodirnite <b>Advanced</b> levo.</p>
+        </div>
+
+        <div class="korak">
+          <div class="oznaka">KORAK 3 OD 6</div>
+          <h3>Go to … (unsafe)</h3>
+          <div class="crtez">
+            <div class="red"><span class="veza">Hide Advanced</span><span class="plavo">BACK TO SAFETY</span></div>
+            <div class="sitno">Continue only if you understand the risks and trust the developer (aleksinacuzstudente@gmail.com).</div>
+            <div><span class="veza dodir">Go to aleksinacuzstudente.github.io (unsafe)</span></div>
+          </div>
+          <p>Ispod se pojavi veza <b>Go to aleksinacuzstudente.github.io (unsafe)</b>. Dodirnite je.</p>
+        </div>
+
+        <div class="korak">
+          <div class="oznaka">KORAK 4 OD 6</div>
+          <h3>Select all, pa Continue</h3>
+          <div class="crtez tamni">
+            <div class="velik">aleksinacuzstudente.github.io wants access to your Google Account</div>
+            <div class="kvacica puno dodir"><i></i>Select all</div>
+            <div class="kvacica puno"><i></i><span class="sitno">See, edit, create and delete all your Google Sheets spreadsheets</span></div>
+            <div class="red"><span class="okvir-dugme">Cancel</span><span class="okvir-dugme dodir">Continue</span></div>
+          </div>
+          <p>Štiklirajte <b>Select all</b>, spustite se do dna i dodirnite <b>Continue</b>. Bez dozvole za tabele aplikacija ne može da upiše gosta. Upisuje samo u tabelu gostiju.</p>
+        </div>
+
+        <div class="korak">
+          <div class="oznaka">KORAK 5 OD 6</div>
+          <h3>Dozvolite kameru</h3>
+          <div class="crtez" style="background:#1f2a3d">
+            <div class="ios"><div>“aleksinacuzstudente.github.io” Would Like to Access the Camera</div>
+              <div class="dugmici"><span>Don't Allow</span><span class="dodir">Allow</span></div></div>
+          </div>
+          <p>Dodirnite kvadrat <b>Dodirnite za skeniranje</b> i dozvolite kameru (<b>Allow</b>). Kamera posle ostaje upaljena.</p>
+        </div>
+
+        <div class="korak">
+          <div class="oznaka">KORAK 6 OD 6</div>
+          <h3>Skenirajte goste</h3>
+          <div class="crtez zeleno">
+            <svg><use href="#i-ok"/></svg>
+            <div class="velik">UPISAN</div>
+            <div>Marko Marković</div>
+          </div>
+          <p>Usmerite kameru na QR gosta. <b>Zeleno</b>: upisan. <b>Crveno</b>: već je ušao. Dodirnite bilo gde za nastavak. Gost bez QR-a: <b>Pretraga</b>.</p>
+        </div>
+
+      </div>
+      <div class="tacke" id="tacke"></div>
+    </div>
+    <div class="navigacija">
+      <button class="dugme" id="nazad">Nazad</button>
+      <button class="dugme" id="dalje">Dalje</button>
+    </div>
     <p class="poruka" id="prijava-poruka"></p>
     <button class="dugme glavno" id="prijavi">Prijavite se</button>
   </div>
@@ -410,7 +545,7 @@
       klasa = 'upozorenje';
       html = ikona('i-pazi') + '<div class="naslov">NIJE UPISANO</div><div class="detalj">' + esc(r.poruka) + '</div>';
     }
-    html += klasa === 'ok' ? '<div class="vreme"></div>' : '<div class="dalje">Dodirnite za nastavak</div>';
+    html += klasa === 'ok' ? '<div class="vreme"></div>' : '<div class="dalje"><svg><use href="#i-dodir"/></svg>Dodirnite bilo gde za nastavak</div>';
     el.className = 'rezultat ' + klasa;
     el.innerHTML = html;
     rezultatOtvoren = true;
@@ -549,6 +684,29 @@
     $('q').value = '';
     upisi('broj', b.dataset.broj);
   });
+
+  // ---------- Uputstvo: koraci sa Nazad/Dalje i prevlačenjem ----------
+  let korak = 0;
+  const brojKoraka = document.querySelectorAll('.korak').length;
+  $('tacke').innerHTML = '<i></i>'.repeat(brojKoraka);
+  function idiNa(n) {
+    korak = Math.max(0, Math.min(brojKoraka - 1, n));
+    $('vrpca').style.transform = 'translateX(' + (-100 * korak) + '%)';
+    [...$('tacke').children].forEach((t, i) => t.classList.toggle('ovde', i === korak));
+    $('nazad').disabled = korak === 0;
+    $('dalje').disabled = korak === brojKoraka - 1;
+  }
+  $('nazad').addEventListener('click', () => idiNa(korak - 1));
+  $('dalje').addEventListener('click', () => idiNa(korak + 1));
+  let pocetakX = null;
+  $('koraci').addEventListener('touchstart', (e) => { pocetakX = e.touches[0].clientX; }, { passive: true });
+  $('koraci').addEventListener('touchend', (e) => {
+    if (pocetakX == null) return;
+    const dx = e.changedTouches[0].clientX - pocetakX;
+    if (Math.abs(dx) > 40) idiNa(korak + (dx < 0 ? 1 : -1));
+    pocetakX = null;
+  });
+  idiNa(0);
 
   // ---------- Početak ----------
   function prikaziPrijavu(poruka) {
