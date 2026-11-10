@@ -47,7 +47,7 @@
     --na-kameri: #f5ecc2;  /* Sulpher Yellow */
     --na-boji: #ffffff;
     --prsten: rgba(166, 44, 55, .22);
-    --senka: 0 10px 30px rgba(125, 19, 58, .18);
+    --senka: 0 2px 6px rgba(125, 19, 58, .14);
     --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
     --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
     --naslovni: "Space Grotesk", system-ui, sans-serif;
@@ -66,7 +66,7 @@
       --lose: #cc1236;     /* Carmine */
       --kamera: #501345;   /* Cotinga Purple */
       --prsten: rgba(245, 236, 194, .3);
-      --senka: 0 10px 30px rgba(30, 0, 15, .45);
+      --senka: none;
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -150,7 +150,8 @@
   .crtez.zeleno svg { width: 48px; height: 48px; }
   .crtez.zeleno .velik { font-weight: 800; }
   .dodir { position: relative; border-radius: 6px; }
-  .dodir::after { content: ""; position: absolute; inset: -5px; border: 3px solid #f59e0b; border-radius: 10px; animation: dodir 1.4s ease-out infinite; pointer-events: none; }
+  .dodir::after { content: ""; position: absolute; inset: -5px; border: 3px solid #e31f26; border-radius: 10px; pointer-events: none;
+    box-shadow: 0 0 0 2px #fff, inset 0 0 0 1px #fff; animation: dodir 1.4s ease-out infinite; }  /* Spectrum Red */
   @keyframes dodir { 0% { opacity: 1; transform: scale(.92); } 80%, 100% { opacity: 0; transform: scale(1.12); } }
 
   /* Napredak: Stiglo 3 od 506 i traka u istom redu */
@@ -256,6 +257,24 @@
   .pretraga .usao { color: var(--tekst2); font-weight: 700; font-size: 14px; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); }
   .pretraga .napomena { color: var(--tekst2); justify-content: center; padding: 28px 0; font-size: 15px; border: 0; }
 
+  /* Prozor: potvrda odjave i greške pri prijavi */
+  .prozor { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 24px 18px;
+    background: rgba(40, 0, 20, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: providno .2s ease-out both; }
+  .prozor.izlazi { animation: providno .18s ease-in reverse both; }
+  @keyframes providno { from { opacity: 0; } to { opacity: 1; } }
+  .prozor-kartica { width: 100%; max-width: 400px; background: var(--povrs); color: var(--tekst); border-radius: 24px; padding: 24px 20px 18px;
+    text-align: center; box-shadow: 0 20px 50px rgba(40, 0, 20, .35); animation: iskoci .4s var(--opruga) both; }
+  .prozor-ikona { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: var(--pozadina); color: var(--akcent); }
+  @media (prefers-color-scheme: dark) { .prozor-ikona { color: var(--tekst); } }
+  .prozor-ikona svg { width: 34px; height: 34px; }
+  .prozor h3 { margin: 0 0 8px; font-size: 22px; }
+  .prozor-tekst { font-size: 16px; line-height: 1.5; color: var(--tekst2); }
+  .prozor-tekst b { color: var(--tekst); }
+  .prozor-tekst .mejl { display: inline-block; margin: 8px 0 2px; padding: 6px 12px; border-radius: 10px; background: var(--pozadina); color: var(--tekst); font-weight: 600; overflow-wrap: anywhere; }
+  .prozor-dugmad { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+  .prozor-dugmad .dugme { min-height: 54px; box-shadow: none; }
+  .prozor-dugmad .dugme.obicno { background: var(--pozadina); }
+
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     .kamera .linija { display: none; }
@@ -271,6 +290,7 @@
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path class="potez" d="M10 10l4 4m0 -4l-4 4"/></symbol>
   <symbol id="i-pazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
   <symbol id="i-dodir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5"/><path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"/></symbol>
+  <symbol id="i-odjava" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3"/><path d="M18 15l3 -3"/></symbol>
   <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
 </svg>
 
@@ -311,11 +331,14 @@
           <div class="oznaka">KORAK 3 OD 6</div>
           <h3>Go to … (unsafe)</h3>
           <div class="crtez">
+            <div class="trougao"></div>
+            <div class="velik">Google hasn't verified this app</div>
+            <div class="sitno">The app is requesting access to sensitive info in your Google Account…</div>
             <div class="red"><span class="veza">Hide Advanced</span><span class="plavo">BACK TO SAFETY</span></div>
             <div class="sitno">Continue only if you understand the risks and trust the developer (aleksinacuzstudente@gmail.com).</div>
             <div><span class="veza dodir">Go to aleksinacuzstudente.github.io (unsafe)</span></div>
           </div>
-          <p>Ispod se pojavi veza <b>Go to aleksinacuzstudente.github.io (unsafe)</b>. Dodirnite je.</p>
+          <p>Posle <b>Advanced</b> ispod se pojavi veza <b>Go to aleksinacuzstudente.github.io (unsafe)</b>. Dodirnite je.</p>
         </div>
 
         <div class="korak">
@@ -337,7 +360,7 @@
             <div class="ios"><div>“aleksinacuzstudente.github.io” Would Like to Access the Camera</div>
               <div class="dugmici"><span>Don't Allow</span><span class="dodir">Allow</span></div></div>
           </div>
-          <p>Dodirnite kvadrat <b>Dodirnite za skeniranje</b> i dozvolite kameru (<b>Allow</b>). Kamera posle ostaje upaljena.</p>
+          <p>Dodirnite kvadrat <b>Dodirnite za skeniranje</b> i dozvolite kameru (<b>Allow</b>).</p>
         </div>
 
         <div class="korak">
@@ -359,7 +382,6 @@
       <button class="dugme" id="dalje">Dalje</button>
     </div>
     <p class="poruka" id="prijava-poruka"></p>
-    <button class="dugme glavno" id="prijavi">Prijavite se</button>
   </div>
 </div>
 
@@ -403,6 +425,14 @@
 </div>
 
 <div class="rezultat skriveno" id="rezultat" role="alert"></div>
+<div class="prozor skriveno" id="prozor" role="dialog" aria-modal="true" aria-labelledby="prozor-naslov">
+  <div class="prozor-kartica">
+    <div class="prozor-ikona" id="prozor-ikona"></div>
+    <h3 id="prozor-naslov"></h3>
+    <div class="prozor-tekst" id="prozor-tekst"></div>
+    <div class="prozor-dugmad" id="prozor-dugmad"></div>
+  </div>
+</div>
 <div class="dno-safari"></div>
 <canvas id="platno" class="skriveno"></canvas>
 
@@ -433,12 +463,14 @@
   else mejl = (sacuvan && sacuvan.mejl) || '';
 
   async function primiToken(pristup, traje, odobreno) {
-    if (!DOZVOLE.every((d) => (odobreno || '').split(' ').includes(d))) throw new Error('Niste odobrili sve dozvole. Prijavite se ponovo i štiklirajte sve.');
+    if (!DOZVOLE.every((d) => (odobreno || '').split(' ').includes(d))) throw greska('dozvole');
     token = pristup; tokenDo = Date.now() + (Number(traje) - 60) * 1000;
     try { mejl = (await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } })).json()).email || mejl; } catch (e) {}
     cuvaj('ulaz-token', { token, do: tokenDo, mejl });
     return token;
   }
+
+  function greska(kod, detalj) { const e = new Error(kod + (detalj ? ' (' + detalj + ')' : '')); e.kod = kod; return e; }
 
   // Povratak sa Google-a posle prijave preusmeravanjem (#access_token=…)
   const povratak = new URLSearchParams(location.hash.slice(1));
@@ -448,8 +480,8 @@
     history.replaceState(null, '', OVDE);
     if (st.kod) kodIzUrla = st.kod;
     cuvaj('ulaz-stanje', null);
-    povratakObrada = povratak.get('state') !== st.state ? Promise.reject(new Error('Prijava nije uspela, pokušajte ponovo.'))
-      : povratak.get('error') ? Promise.reject(new Error('Prijava nije uspela (' + povratak.get('error') + ').'))
+    povratakObrada = povratak.get('state') !== st.state ? Promise.reject(greska('neuspelo', 'state'))
+      : povratak.get('error') ? Promise.reject(greska(povratak.get('error') === 'access_denied' ? 'odbijeno' : 'neuspelo', povratak.get('error')))
       : primiToken(povratak.get('access_token'), povratak.get('expires_in'), povratak.get('scope'));
   }
 
@@ -468,17 +500,21 @@
       client_id: CLIENT_ID, scope: DOZVOLE.join(' '),
       callback: (odg) => {
         const c = cekaju; cekaju = [];
-        if (odg.error) return c.forEach(([, ne]) => ne(new Error('Prijava nije uspela (' + odg.error + ').')));
+        if (odg.error) return c.forEach(([, ne]) => ne(greska(odg.error === 'access_denied' ? 'odbijeno' : 'neuspelo', odg.error)));
         primiToken(odg.access_token, odg.expires_in, odg.scope).then((t) => c.forEach(([da]) => da(t)), (e) => c.forEach(([, ne]) => ne(e)));
       },
-      error_callback: (e) => { const c = cekaju; cekaju = []; c.forEach(([, ne]) => ne(new Error('Prijava nije uspela (' + (e.type || e) + ').'))); },
+      error_callback: (e) => {
+        const c = cekaju; cekaju = [];
+        const kod = { popup_closed: 'prekinuto', popup_failed_to_open: 'blokirano' }[e.type] || 'neuspelo';
+        c.forEach(([, ne]) => ne(greska(kod, e.type)));
+      },
     });
     return klijent;
   }
   function traziToken(prompt) {
     if (PWA) return prijavaPreusmeravanjem(prompt);
     return new Promise((da, ne) => {
-      if (!napraviKlijenta()) return ne(new Error('Google prijava se još učitava, pokušajte ponovo.'));
+      if (!napraviKlijenta()) return ne(greska('ucitava'));
       cekaju.push([da, ne]);
       klijent.requestAccessToken({ prompt, hint: mejl || undefined });
     });
@@ -776,10 +812,12 @@
     $('vrpca').style.transform = 'translateX(' + (-100 * korak) + '%)';
     [...$('tacke').children].forEach((t, i) => t.classList.toggle('ovde', i === korak));
     $('nazad').disabled = korak === 0;
-    $('dalje').disabled = korak === brojKoraka - 1;
+    const poslednji = korak === brojKoraka - 1;
+    $('dalje').textContent = poslednji ? 'Prijavite se' : 'Dalje';
+    $('dalje').classList.toggle('glavno', poslednji);
   }
   $('nazad').addEventListener('click', () => idiNa(korak - 1));
-  $('dalje').addEventListener('click', () => idiNa(korak + 1));
+  $('dalje').addEventListener('click', () => (korak === brojKoraka - 1 ? prijava() : idiNa(korak + 1)));
   let pocetakX = null;
   $('koraci').addEventListener('touchstart', (e) => { pocetakX = e.touches[0].clientX; }, { passive: true });
   $('koraci').addEventListener('touchend', (e) => {
@@ -790,6 +828,45 @@
   });
   idiNa(0);
 
+  // ---------- Prozor: potvrda i greške ----------
+  function prozor({ ikona, naslov, tekst, dugmad }) {
+    $('prozor-ikona').innerHTML = '<svg><use href="#' + (ikona || 'i-pazi') + '"/></svg>';
+    $('prozor-naslov').textContent = naslov;
+    $('prozor-tekst').innerHTML = tekst;
+    $('prozor-dugmad').innerHTML = '';
+    dugmad.forEach((d) => {
+      const b = document.createElement('button');
+      b.className = 'dugme ' + (d.vrsta || 'obicno');
+      b.textContent = d.tekst;
+      b.addEventListener('click', () => { zatvoriProzor(); if (d.akcija) d.akcija(); });
+      $('prozor-dugmad').appendChild(b);
+    });
+    $('prozor').classList.remove('skriveno', 'izlazi');
+  }
+  function zatvoriProzor() {
+    $('prozor').classList.add('izlazi');
+    setTimeout(() => $('prozor').classList.add('skriveno'), 180);
+  }
+  $('prozor').addEventListener('click', (e) => { if (e.target === $('prozor')) zatvoriProzor(); });
+
+  function greskaPrijave(e) {
+    const ponovo = { tekst: 'Pokušajte ponovo', vrsta: 'glavno', akcija: prijava };
+    const zatvori = { tekst: 'Zatvori' };
+    if (e.pristup) return prozor({ ikona: 'i-x', naslov: 'Nalog nema pristup tabeli',
+      tekst: 'Prijavljeni ste kao<br><span class="mejl">' + esc(mejl || 'nepoznat nalog') + '</span><br>Štab još nije podelio tabelu gostiju sa ovim nalogom. Javite štabu ovaj mejl, ili se prijavite nalogom sa kojim je tabela podeljena.',
+      dugmad: [{ tekst: 'Prijavite se drugim nalogom', vrsta: 'glavno', akcija: () => { odjavi(); prijava(); } }, zatvori] });
+    if (e.istekla) return prozor({ naslov: 'Prijava je istekla', tekst: 'Google prijava traje sat vremena. Prijavite se ponovo, istim nalogom.', dugmad: [ponovo, zatvori] });
+    const poruke = {
+      dozvole: ['Niste dozvolili pristup tabeli', 'Na Google ekranu sa dozvolama morate da štiklirate <b>Select all</b> (ili bar dozvolu za <b>Google Sheets</b>), pa <b>Continue</b>. Bez te dozvole aplikacija ne može da upiše gosta.', true],
+      odbijeno: ['Pristup nije odobren', 'Na Google ekranu je izabrano <b>Cancel</b> ili <b>Back to safety</b>. Pokušajte ponovo i pratite korake 2 do 4: <b>Advanced</b>, <b>Go to … (unsafe)</b>, <b>Select all</b>, <b>Continue</b>.', true],
+      prekinuto: ['Prijava je prekinuta', 'Prozor za Google prijavu je zatvoren pre kraja. Pokušajte ponovo i prođite sve korake do <b>Continue</b>.', false],
+      blokirano: ['Pregledač je blokirao prijavu', 'Pregledač nije dozvolio da se otvori Google prozor za prijavu. Dozvolite iskačuće prozore (pop-ups) za ovaj sajt u podešavanjima pregledača, pa pokušajte ponovo.', false],
+      ucitava: ['Google prijava se još učitava', 'Sačekajte par sekundi i proverite internet, pa pokušajte ponovo.', false],
+    };
+    const [naslov, tekst, korak4] = poruke[e.kod] || ['Prijava nije uspela', 'Nešto nije u redu sa Google prijavom' + (e.message ? ' (' + esc(e.message) + ')' : '') + '. Proverite internet i pokušajte ponovo.', false];
+    prozor({ naslov, tekst, dugmad: korak4 ? [ponovo, { tekst: 'Prikaži korak 4', akcija: () => idiNa(3) }] : [ponovo, zatvori] });
+  }
+
   // ---------- Početak ----------
   function prikaziPrijavu(poruka) {
     iskljuci();
@@ -797,6 +874,7 @@
     $('ekran-rad').classList.add('skriveno');
     $('ekran-prijava').classList.remove('skriveno');
     $('prijava-poruka').textContent = poruka || '';
+    idiNa(mejl ? brojKoraka - 1 : 0);  // ponovna prijava istim nalogom: odmah dugme, bez celog uputstva
   }
   let osvezavanje = null;
   async function pocni() {
@@ -810,12 +888,10 @@
       osvezavanje = setInterval(() => { if (!salje && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
     } catch (e) {
       prikaziPrijavu('');
-      $('prijava-poruka').textContent = e.istekla ? 'Prijava je istekla. Prijavite se ponovo.' : e.pristup
-        ? 'Nalog ' + (mejl || 'nepoznat') + ' nema pristup tabeli gostiju. Javite štabu ovaj mejl.'
-        : e.message;
+      greskaPrijave(e);
     }
   }
-  $('odjava').addEventListener('click', () => {
+  function odjavi() {
     // Opoziv kod Google-a: sledeća prijava ide kroz ceo tok (izbor naloga, Advanced, Select all), kao kod novog skenera.
     const t = token;
     token = null; tokenDo = 0; mejl = '';
@@ -823,15 +899,21 @@
     try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t, () => {}); } catch (e) {}
     clearInterval(osvezavanje);
     prikaziPrijavu('');
-    idiNa(0);
-  });
-  $('prijavi').addEventListener('click', () => {
+  }
+  $('odjava').addEventListener('click', () => prozor({
+    ikona: 'i-odjava', naslov: 'Odjaviti se?',
+    tekst: 'Prijava i Google dozvola biće obrisane sa ovog telefona' + (mejl ? ':<br><span class="mejl">' + esc(mejl) + '</span><br>' : '. ')
+      + 'Za dalje skeniranje moraćete ponovo da prođete prijavu.',
+    dugmad: [{ tekst: 'Odjavi se', vrsta: 'glavno', akcija: odjavi }, { tekst: 'Otkaži' }],
+  }));
+  function prijava() {
     $('prijava-poruka').textContent = '';
-    traziToken(token ? '' : 'consent').then(pocni).catch((e) => { $('prijava-poruka').textContent = e.message; });
-  });
-  if (povratakObrada) povratakObrada.then(pocni).catch((e) => { $('prijava-poruka').textContent = e.message; });
+    traziToken(token || mejl ? '' : 'consent').then(pocni).catch(greskaPrijave);
+  }
+  if (povratakObrada) povratakObrada.then(pocni).catch((e) => { prikaziPrijavu(''); greskaPrijave(e); });
   else if (token) pocni();
   else if (kodIzUrla) $('prijava-poruka').textContent = 'Prijavite se, pa se gost upisuje sam.';
+  if (!token && !povratakObrada) idiNa(mejl ? brojKoraka - 1 : 0);
 </script>
 </body>
 </html>
