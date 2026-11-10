@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Dodela zahvalnica</title>
+<meta name="apple-mobile-web-app-title" content="Zahvalnice">
+<!--
+  Dodela zahvalnica, dolazak gostiju: skener se prijavi Google nalogom, kamera čita QR gosta i upis ide pravo u Google tabelu
+  (Sheets API, u ime prijavljenog). Upisuje samo nalog sa kojim je tabela podeljena; stranica nema podatke,
+  imena se čitaju iz tabele tek posle prijave. Izvor: scripts/zahvalnice/ulaz/ u privatnom repozitorijumu.
+-->
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+  :root { --ok: #166534; --vec: #9F1239; --tekst: #111; --siva: #555; --linija: #ccc; --dugme: #1E3A8A; --pozadina: #fff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; color: var(--tekst); background: var(--pozadina); }
+  main { max-width: 34rem; margin: 0 auto; padding: 12px 16px 40px; }
+  .prijava { font-size: 14px; padding: 8px 10px; background: #F3F4F6; margin-bottom: 8px; }
+  .prijava.ne { background: #FEE2E2; color: var(--vec); font-weight: 700; }
+  .stanje { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+  .kartica { padding: 20px 18px; color: #fff; margin-bottom: 14px; }
+  .kartica.ok { background: var(--ok); }
+  .kartica.vec, .kartica.nema, .kartica.greska { background: var(--vec); }
+  .kartica .naslov { font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+  .kartica .ime { font-size: 32px; font-weight: 800; line-height: 1.15; margin: 8px 0 6px; }
+  .kartica .detalj { font-size: 18px; opacity: .95; }
+  .kamera { position: relative; background: #000; margin-bottom: 12px; display: none; }
+  .kamera video { width: 100%; display: block; }
+  .kamera .okvir { position: absolute; inset: 15%; border: 4px solid rgba(255,255,255,.85); pointer-events: none; }
+  .kamera .poruka { position: absolute; left: 0; right: 0; bottom: 0; color: #fff; background: rgba(0,0,0,.55); text-align: center; padding: 6px; font-size: 15px; }
+  .dugmad { display: flex; gap: 10px; margin-bottom: 14px; }
+  .dugmad button, .dugmad label.dugme { flex: 1; text-align: center; font-size: 19px; font-weight: 800; padding: 16px 10px; border: 0; border-radius: 10px; background: var(--dugme); color: #fff; cursor: pointer; }
+  .dugmad .sporedno { background: #374151; }
+  #prijavi { width: 100%; font-size: 20px; font-weight: 800; padding: 18px; border: 0; border-radius: 10px; background: var(--dugme); color: #fff; margin: 8px 0 16px; }
+  label.naslov-polja { display: block; font-weight: 700; margin: 8px 0 6px; }
+  input[type=search] { width: 100%; font-size: 20px; padding: 12px; border: 2px solid #333; border-radius: 8px; }
+  ul { list-style: none; padding: 0; margin: 12px 0 0; }
+  li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--linija); }
+  li .ko { font-size: 18px; font-weight: 600; }
+  li .sta { font-size: 14px; color: var(--siva); }
+  li button { font-size: 17px; font-weight: 700; padding: 12px 16px; border: 0; border-radius: 8px; background: var(--ok); color: #fff; white-space: nowrap; }
+  li button:disabled { background: #999; }
+  .usao { color: var(--vec); font-weight: 700; white-space: nowrap; }
+  .napomena { color: var(--siva); font-size: 15px; margin-top: 10px; }
+  .skriveno { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 style="font-size:24px;margin:4px 0 10px">Dolazak gostiju</h1>
+  <div class="prijava" id="prijava">Niste prijavljeni.</div>
+  <button id="prijavi">PRIJAVITE SE</button>
+  <div id="rad" class="skriveno">
+    <div class="stanje" id="stanje"></div>
+    <div id="rezultat"></div>
+    <div class="kamera" id="kamera">
+      <video id="video" playsinline muted></video>
+      <div class="okvir"></div>
+      <div class="poruka" id="kamera-poruka">Usmerite kameru na QR kod</div>
+    </div>
+    <div class="dugmad">
+      <button id="skeniraj">SKENIRAJ</button>
+      <label class="dugme sporedno" for="slika">SLIKAJ QR</label>
+      <input id="slika" class="skriveno" type="file" accept="image/*" capture="environment">
+    </div>
+    <label class="naslov-polja" for="q">Gost bez QR koda: ime, broj ili telefon</label>
+    <input id="q" type="search" autocomplete="off" autocapitalize="off" placeholder="npr. Marko, 123 ili 0641234567">
+    <ul id="lista"></ul>
+    <div class="napomena" id="napomena"></div>
+  </div>
+  <canvas id="platno" class="skriveno"></canvas>
+</main>
+<script>
+  const CLIENT_ID = '908081565472-pj7sujfd1tsjrquu9aibvduc20trc7cj.apps.googleusercontent.com';
+  const TABELA = '1iyR-gLOteQkBjGUQCXHB1HW9RNwrKoalVgEL62nbYpE';
+  const SHEET = 'Gosti';
+  const SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email';
+  const API = 'https://sheets.googleapis.com/v4/spreadsheets/' + TABELA + '/values/';
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ime = (g) => esc(g.ime + ' ' + g.prezime);
+  const kodIzUrla = new URLSearchParams(location.search).get('k');
+
+  // ---------- Prijava (Google Identity Services, token u ime skenera) ----------
+  let token = null, tokenDo = 0, mejl = '', klijent = null, cekaju = [];
+  try {
+    const t = JSON.parse(sessionStorage.getItem('ulaz-token') || 'null');
+    if (t && t.do > Date.now() + 60000) { token = t.token; tokenDo = t.do; mejl = t.mejl || ''; }
+  } catch (e) {}
+
+  function napraviKlijenta() {
+    if (klijent || !window.google || !google.accounts) return klijent;
+    klijent = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: SCOPE,
+      callback: async (odg) => {
+        const c = cekaju; cekaju = [];
+        if (odg.error || !google.accounts.oauth2.hasGrantedAllScopes(odg, ...SCOPE.split(' '))) {
+          c.forEach(([, ne]) => ne(new Error('Niste odobrili sve dozvole. Pritisnite PRIJAVITE SE i štiklirajte sve.')));
+          return;
+        }
+        token = odg.access_token; tokenDo = Date.now() + (odg.expires_in - 60) * 1000;
+        try { mejl = (await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } })).json()).email || ''; } catch (e) {}
+        try { sessionStorage.setItem('ulaz-token', JSON.stringify({ token, do: tokenDo, mejl })); } catch (e) {}
+        c.forEach(([da]) => da(token));
+      },
+      error_callback: (e) => { const c = cekaju; cekaju = []; c.forEach(([, ne]) => ne(new Error('Prijava nije uspela (' + (e.type || e) + ').'))); },
+    });
+    return klijent;
+  }
+  function traziToken(prompt) {
+    return new Promise((da, ne) => {
+      if (!napraviKlijenta()) return ne(new Error('Google prijava se još učitava, pokušajte ponovo.'));
+      cekaju.push([da, ne]);
+      klijent.requestAccessToken({ prompt, hint: mejl || undefined });
+    });
+  }
+  async function tokenSad() {
+    if (token && Date.now() < tokenDo) return token;
+    return traziToken('');
+  }
+
+  // ---------- Tabela ----------
+  async function sheets(metod, putanja, telo) {
+    const t = await tokenSad();
+    const r = await fetch(API + putanja, {
+      method: metod, headers: { Authorization: 'Bearer ' + t, 'Content-Type': 'application/json' },
+      body: telo ? JSON.stringify(telo) : undefined,
+    });
+    if (r.status === 401) { token = null; return sheets(metod, putanja, telo); }
+    if (r.status === 403 || r.status === 404) { const e = new Error('PRISTUP'); e.pristup = true; throw e; }
+    if (!r.ok) throw new Error('Tabela: greška ' + r.status);
+    return r.json();
+  }
+
+  let gosti = [], k = {};
+  async function ucitaj() {
+    const v = (await sheets('GET', encodeURIComponent(SHEET + '!A1:J'))).values || [];
+    k = {}; (v[0] || []).forEach((h, i) => (k[h] = i));
+    gosti = v.slice(1).map((r, i) => ({
+      red: i + 2, broj: r[k.Broj] || '', kod: String(r[k.Kod] || '').trim().toUpperCase(), ime: r[k.Ime] || '', prezime: r[k.Prezime] || '',
+      telefon: r[k.Telefon] || '', uloga: r[k.Uloga] || '', stigao: r[k.Stigao] || '', vreme: r[k.Vreme] || '', upisao: r[k.Upisao] || '',
+    })).filter((g) => g.broj);
+    stanje();
+  }
+  function stanje() {
+    $('stanje').textContent = 'Ušlo ' + gosti.filter((g) => g.stigao).length + ' od ' + gosti.length;
+  }
+  const slovo = (c) => String.fromCharCode(65 + c);
+
+  // Upis: uvek sveže čitanje tabele pre upisa (drugi skener je možda upravo upisao istog gosta).
+  let salje = false;
+  async function upisi(po, vrednost) {
+    if (salje) return;
+    salje = true;
+    try {
+      await ucitaj();
+      const g = gosti.find((x) => (po === 'kod' ? x.kod === vrednost : x.broj === vrednost));
+      if (!g) return prikazi({ status: 'nema', trazeno: vrednost });
+      if (g.stigao) return prikazi({ status: 'vec', gost: g });
+      const vreme = new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Belgrade' });
+      const opseg = SHEET + '!' + slovo(k.Stigao) + g.red + ':' + slovo(k.Upisao) + g.red;
+      await sheets('PUT', encodeURIComponent(opseg) + '?valueInputOption=RAW', { values: [['DA', vreme, mejl]] });
+      Object.assign(g, { stigao: 'DA', vreme, upisao: mejl });
+      stanje();
+      prikazi({ status: 'ok', gost: g });
+    } catch (e) {
+      prikazi(e.pristup ? { status: 'pristup' } : { status: 'greska', poruka: e.message });
+    } finally {
+      salje = false;
+      if ($('q').value.trim()) trazi();
+    }
+  }
+
+  // ---------- Prikaz ----------
+  let zvuk;
+  function ton(ok) {
+    try {
+      zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)();
+      const tonovi = ok ? [[880, 0, 0.15]] : [[220, 0, 0.18], [220, 0.25, 0.18]];
+      tonovi.forEach(([f, od, traje]) => {
+        const o = zvuk.createOscillator(), g = zvuk.createGain();
+        o.frequency.value = f; o.connect(g); g.connect(zvuk.destination);
+        g.gain.value = 0.25; o.start(zvuk.currentTime + od); o.stop(zvuk.currentTime + od + traje);
+      });
+      if (navigator.vibrate) navigator.vibrate(ok ? 80 : [120, 80, 120]);
+    } catch (e) {}
+  }
+  function prikazi(r) {
+    let html = '';
+    if (r.status === 'ok') {
+      html = '<div class="kartica ok"><div class="naslov">UPISAN</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">' + esc(r.gost.uloga) + ' · broj ' + esc(r.gost.broj) + '</div></div>';
+    } else if (r.status === 'vec') {
+      html = '<div class="kartica vec"><div class="naslov">VEĆ UŠAO</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '</div></div>';
+    } else if (r.status === 'nema') {
+      html = '<div class="kartica nema"><div class="naslov">NEMA NA SPISKU</div><div class="detalj">Kod ' + esc(r.trazeno)
+        + ' nije na spisku. Potražite gosta po imenu ispod.</div></div>';
+    } else if (r.status === 'pristup') {
+      html = '<div class="kartica greska"><div class="naslov">NEMATE PRISTUP</div><div class="detalj">Nalog ' + esc(mejl)
+        + ' nema pravo na tabelu gostiju. Javite štabu ovaj mejl.</div></div>';
+    } else {
+      html = '<div class="kartica greska"><div class="naslov">NIJE UPISANO</div><div class="detalj">' + esc(r.poruka) + '</div></div>';
+    }
+    $('rezultat').innerHTML = html;
+    ton(r.status === 'ok');
+  }
+
+  // ---------- Kamera ----------
+  let poslednji = '', poslednjiU = 0;
+  function procitan(tekst) {
+    const m = String(tekst).match(/[?&]k=([A-Za-z0-9]+)/);
+    const kod = (m ? m[1] : String(tekst)).trim().toUpperCase();
+    const sad = Date.now();
+    if (salje || (kod === poslednji && sad - poslednjiU < 5000)) return;
+    poslednji = kod; poslednjiU = sad;
+    upisi('kod', kod);
+  }
+  let tok = null, detektor = null;
+  const video = $('video'), platno = $('platno'), ctx = platno.getContext('2d', { willReadFrequently: true });
+  async function kadar() {
+    if (!tok) return;
+    if (video.readyState >= 2 && !salje) {
+      try {
+        if (detektor) {
+          const kodovi = await detektor.detect(video);
+          if (kodovi.length) procitan(kodovi[0].rawValue);
+        } else {
+          const w = 640, h = Math.round(video.videoHeight * w / video.videoWidth) || 480;
+          platno.width = w; platno.height = h;
+          ctx.drawImage(video, 0, 0, w, h);
+          const qr = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' });
+          if (qr && qr.data) procitan(qr.data);
+        }
+      } catch (e) {}
+    }
+    setTimeout(() => requestAnimationFrame(kadar), 120);
+  }
+  async function ukljuci() {
+    try {
+      if ('BarcodeDetector' in window) {
+        try { if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) detektor = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) {}
+      }
+      tok = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      video.srcObject = tok;
+      await video.play();
+      $('kamera').style.display = 'block';
+      $('skeniraj').textContent = 'ZAUSTAVI';
+      kadar();
+    } catch (e) {
+      tok = null;
+      prikazi({ status: 'greska', poruka: 'Kamera ne radi (' + (e.name || e) + '). Dozvolite kameru u podešavanjima pregledača ili koristite SLIKAJ QR.' });
+    }
+  }
+  function iskljuci() {
+    if (tok) tok.getTracks().forEach((t) => t.stop());
+    tok = null;
+    $('kamera').style.display = 'none';
+    $('skeniraj').textContent = 'SKENIRAJ';
+  }
+  $('skeniraj').addEventListener('click', () => {
+    try { zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)(); zvuk.resume(); } catch (e) {}
+    tok ? iskljuci() : ukljuci();
+  });
+  $('slika').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const w = Math.min(1200, img.width), h = Math.round(img.height * w / img.width);
+      platno.width = w; platno.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      const qr = jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
+      URL.revokeObjectURL(img.src);
+      e.target.value = '';
+      if (qr && qr.data) { poslednji = ''; procitan(qr.data); }
+      else prikazi({ status: 'greska', poruka: 'Na slici nije pronađen QR kod. Slikajte bliže i oštrije.' });
+    };
+    img.src = URL.createObjectURL(f);
+  });
+
+  // ---------- Pretraga ----------
+  const bezKvacica = (s) => String(s).toLowerCase().replace(/dž/g, 'dz').replace(/đ/g, 'dj').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  function trazi() {
+    const upit = bezKvacica($('q').value).trim();
+    const cifre = upit.replace(/\D/g, '');
+    const reci = upit.split(/\s+/);
+    const nadjeni = !upit ? [] : gosti.filter((g) => {
+      if (/^\d+$/.test(upit) && upit.length <= 4) return g.broj === upit;
+      if (cifre.length >= 5) return g.telefon.replace(/\D/g, '').includes(cifre);
+      const ip = bezKvacica(g.ime + ' ' + g.prezime);
+      return reci.every((w) => ip.includes(w));
+    });
+    $('lista').innerHTML = nadjeni.slice(0, 30).map((g) => '<li><div><div class="ko">' + ime(g) + '</div><div class="sta">broj ' + esc(g.broj)
+      + ' · ' + esc(g.uloga) + (g.telefon ? ' · ' + esc(g.telefon) : '') + '</div></div>'
+      + (g.stigao ? '<span class="usao">ušao ' + esc(g.vreme) + '</span>' : '<button data-broj="' + esc(g.broj) + '">UPIŠI</button>') + '</li>').join('');
+    $('napomena').textContent = nadjeni.length > 30 ? 'Ima još, upišite više slova.' : (upit && !nadjeni.length ? 'Nema takvog gosta.' : '');
+  }
+  $('q').addEventListener('input', trazi);
+  $('lista').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-broj]');
+    if (!b) return;
+    b.disabled = true;
+    upisi('broj', b.dataset.broj).then(() => window.scrollTo(0, 0));
+  });
+
+  // ---------- Početak ----------
+  async function pocni() {
+    try {
+      await ucitaj();
+      $('prijava').className = 'prijava';
+      $('prijava').textContent = 'Prijavljeni ste kao ' + mejl + ' · pristup tabeli: DA';
+      $('prijavi').classList.add('skriveno');
+      $('rad').classList.remove('skriveno');
+      if (kodIzUrla) { history.replaceState(null, '', location.pathname); procitan(kodIzUrla); }
+      setInterval(() => { if (!salje) ucitaj().then(() => { if ($('q').value.trim()) trazi(); }).catch(() => {}); }, 30000);
+    } catch (e) {
+      $('prijava').className = 'prijava ne';
+      $('prijava').textContent = e.pristup
+        ? 'Prijavljeni ste kao ' + (mejl || 'nepoznat nalog') + ' · NEMATE PRISTUP TABELI. Javite štabu ovaj mejl.'
+        : e.message;
+      $('prijavi').classList.remove('skriveno');
+    }
+  }
+  $('prijavi').addEventListener('click', () => {
+    traziToken(token ? '' : 'consent').then(pocni).catch((e) => { $('prijava').className = 'prijava ne'; $('prijava').textContent = e.message; });
+  });
+  if (token) pocni();
+  else if (kodIzUrla) $('prijava').textContent = 'Prijavite se, pa se gost upisuje sam.';
+</script>
+</body>
+</html>
