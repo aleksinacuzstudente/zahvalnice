@@ -231,6 +231,8 @@
   .pretraga { position: fixed; left: 0; right: 0; top: 0; z-index: 21; height: 100dvh; background: var(--pozadina);
     display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px 10px; animation: gore .35s var(--glatko) both; }
   .pretraga.izlazi { animation: dole .25s ease-in both; }
+  .pretraga::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 100vh; background: var(--pozadina); }
+  html.trazi #ekran-rad { visibility: hidden; }
   @keyframes gore { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes dole { to { transform: translateY(40px); opacity: 0; } }
   .pretraga > * { width: 100%; max-width: 560px; margin-left: auto; margin-right: auto; }
@@ -238,7 +240,9 @@
   .pretraga .vrh h2 { margin: 0; font-size: 22px; font-weight: 800; }
   .pretraga .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
   .pretraga .zatvori svg { width: 22px; height: 22px; }
-  .pretraga input { width: 100%; font-size: 18px; padding: 15px 16px; border-radius: 14px; border: 2px solid var(--linija);
+  .pretraga .polje { position: relative; }
+  .pretraga .polje svg { position: absolute; left: 16px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); color: var(--tekst2); pointer-events: none; }
+  .pretraga input { width: 100%; font-size: 18px; padding: 15px 16px 15px 50px; border-radius: 14px; -webkit-appearance: none; appearance: none; border: 2px solid var(--linija);
     background: var(--povrs); color: var(--tekst); outline: none; transition: border-color .2s, box-shadow .2s; }
   .pretraga input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px var(--prsten); }
   .pretraga input::placeholder { color: var(--tekst2); }
@@ -249,7 +253,7 @@
   .pretraga .ko { font-size: 17px; font-weight: 700; }
   .pretraga .sta { font-size: 13px; color: var(--tekst2); margin-top: 3px; }
   .pretraga li button { padding: 12px 16px; border-radius: 12px; background: var(--ok); color: var(--na-boji); font-weight: 800; white-space: nowrap; }
-  .pretraga .usao { color: var(--lose); font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .pretraga .usao { color: var(--tekst2); font-weight: 700; font-size: 14px; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); }
   .pretraga .napomena { color: var(--tekst2); justify-content: center; padding: 28px 0; font-size: 15px; border: 0; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -390,7 +394,11 @@
     <h2>Pretraga gosta</h2>
     <button class="zatvori" id="zatvori-pretragu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button>
   </div>
-  <input id="q" type="search" autocomplete="off" autocapitalize="off" enterkeyhint="search" placeholder="Ime, broj ili telefon">
+  <div class="polje">
+    <svg><use href="#i-trazi"/></svg>
+    <input id="q" name="pretraga-gosta" type="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      enterkeyhint="search" placeholder="Ime, prezime, broj gosta…" aria-label="Pretraga gosta">
+  </div>
   <ul id="lista"></ul>
 </div>
 
@@ -719,7 +727,7 @@
     let html = nadjeni.slice(0, 40).map((g, i) => '<li style="animation-delay:' + Math.min(i, 10) * 25 + 'ms"><div><div class="ko">' + ime(g)
       + '</div><div class="sta">broj ' + esc(g.broj) + ' · ' + esc(g.uloga) + (g.telefon ? ' · ' + esc(g.telefon) : '') + '</div></div>'
       + (g.stigao ? '<span class="usao">ušao ' + esc(g.vreme) + '</span>' : '<button data-broj="' + esc(g.broj) + '">UPIŠI</button>') + '</li>').join('');
-    if (!upit) html = '<li class="napomena">Upišite ime, broj gosta ili telefon.</li>';
+    if (!upit) html = '<li class="napomena">Upišite ime, prezime, broj gosta ili telefon.</li>';
     else if (!nadjeni.length) html = '<li class="napomena">Nema takvog gosta.</li>';
     else if (nadjeni.length > 40) html += '<li class="napomena">Ima još, upišite više slova.</li>';
     $('lista').innerHTML = html;
@@ -735,11 +743,15 @@
   function otvoriPretragu() {
     const el = $('pretraga');
     el.classList.remove('skriveno', 'izlazi');
-    uklopi(); trazi(); setTimeout(() => { $('q').focus(); uklopi(); }, 60);
+    document.documentElement.classList.add('trazi');
+    $('q').focus({ preventScroll: true });  // odmah u dodiru, inače iPhone ne otvori tastaturu
+    trazi(); uklopi();
+    setTimeout(uklopi, 300);
   }
   function zatvoriPretragu() {
     const el = $('pretraga');
     $('q').blur();
+    document.documentElement.classList.remove('trazi');
     el.classList.add('izlazi');
     setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); }, 240);
   }
