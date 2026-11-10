@@ -90,10 +90,12 @@
     animation: gore .2s ease-out; }
   @keyframes gore { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
   .pretraga .rucka { width: 44px; height: 5px; border-radius: 3px; background: var(--linija); margin: 0 auto 10px; }
-  .pretraga .vrh { display: flex; gap: 10px; align-items: center; }
-  .pretraga input { flex: 1; min-width: 0; font-size: 18px; padding: 14px; border-radius: 12px; border: 2px solid var(--linija); background: var(--pozadina); color: var(--tekst); outline: none; }
+  .pretraga .vrh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .pretraga .vrh h2 { margin: 0; font-size: 20px; font-weight: 800; }
+  .pretraga input { width: 100%; font-size: 18px; padding: 14px; border-radius: 12px; border: 2px solid var(--linija); background: var(--pozadina); color: var(--tekst); outline: none; }
   .pretraga input:focus { border-color: var(--akcent); }
-  .pretraga .zatvori { padding: 14px 6px; color: var(--tekst2); font-weight: 700; }
+  .pretraga .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs2); display: grid; place-items: center; }
+  .pretraga .zatvori svg { width: 22px; height: 22px; }
   .pretraga ul { list-style: none; margin: 10px 0 0; padding: 0; overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }
   .pretraga li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 2px; border-bottom: 1px solid var(--linija); }
   .pretraga .ko { font-size: 17px; font-weight: 700; }
@@ -111,6 +113,7 @@
   <symbol id="i-trazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></symbol>
   <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M9 12l2 2l4 -4"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path d="M10 10l4 4m0 -4l-4 4"/></symbol>
+  <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
   <symbol id="i-pazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
 </svg>
 
@@ -152,9 +155,10 @@
 <div class="pretraga skriveno" id="pretraga" role="dialog" aria-label="Pretraga gostiju">
   <div class="rucka"></div>
   <div class="vrh">
-    <input id="q" type="search" autocomplete="off" autocapitalize="off" enterkeyhint="search" placeholder="Ime, broj ili telefon">
-    <button class="zatvori" id="zatvori-pretragu">Zatvori</button>
+    <h2>Pretraga gosta</h2>
+    <button class="zatvori" id="zatvori-pretragu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button>
   </div>
+  <input id="q" type="search" autocomplete="off" autocapitalize="off" enterkeyhint="search" placeholder="Ime, broj ili telefon">
   <ul id="lista"></ul>
 </div>
 
