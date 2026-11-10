@@ -25,6 +25,9 @@
   // Sačuvana prijava → odmah ekran za skeniranje, bez treptaja ekrana za prijavu.
   try { const t = JSON.parse(localStorage.getItem('ulaz-token') || 'null'); if (t && t.token && t.do > Date.now() + 60000) document.documentElement.classList.add('prijavljen'); } catch (e) {}
 </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
@@ -44,6 +47,8 @@
     --senka: 0 10px 30px rgba(18, 53, 78, .16);
     --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
     --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
+    --naslovni: "Space Grotesk", system-ui, sans-serif;
+    --telo: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -59,7 +64,10 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
-    background: var(--pozadina); color: var(--tekst); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+    background: var(--pozadina); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
+  h1, h2, h3, .naslov, .ime, .broj { font-family: var(--naslovni); }
+  /* Safari na iPhone-u boji svoju donju traku po elementu uz dno ekrana: ovde je to boja pozadine */
+  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: 2px; background: var(--pozadina); z-index: 1; pointer-events: none; }
   button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
   button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   .skriveno { display: none !important; }
@@ -69,9 +77,12 @@
   .istice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
     background: var(--upozorenje); color: var(--na-boji); font-weight: 700; font-size: 15px; animation: ulaz .3s var(--glatko) both; }
   .istice span { white-space: nowrap; text-decoration: underline; }
-  .odjava { background: none; padding: 0; font-size: 12px; color: var(--tekst2); text-decoration: underline; margin-left: 4px; }
+  .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .nalogred .mejl { min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
+    color: var(--tekst); font-size: 14px; font-weight: 600; }
 
-  .ekran { height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
+  .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
     gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
   @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 
@@ -135,44 +146,47 @@
   .dodir::after { content: ""; position: absolute; inset: -5px; border: 3px solid #f59e0b; border-radius: 10px; animation: dodir 1.4s ease-out infinite; pointer-events: none; }
   @keyframes dodir { 0% { opacity: 1; transform: scale(.92); } 80%, 100% { opacity: 0; transform: scale(1.12); } }
 
-  /* Zaglavlje */
-  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  header h1 { font-size: 20px; margin: 0; font-weight: 800; }
-  header .nalog { font-size: 12px; color: var(--tekst2); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 58vw; }
-  .brojac { text-align: right; }
-  .brojac b { display: inline-block; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; }
-  .brojac b.skok { animation: skok .45s var(--opruga); }
-  @keyframes skok { 40% { transform: scale(1.35); color: var(--ok); } }
-  .brojac span { display: block; font-size: 12px; color: var(--tekst2); margin-top: 2px; }
-  .traka { height: 8px; background: var(--povrs2); border-radius: 4px; overflow: hidden; }
-  .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 4px; transition: width .6s var(--glatko); }
+  /* Napredak: Stiglo 3 od 506 i traka u istom redu */
+  .napredak { display: flex; align-items: center; gap: 14px; }
+  .napredak .broj { white-space: nowrap; font-size: 17px; font-weight: 500; color: var(--tekst2); }
+  .napredak .broj b { display: inline-block; font-size: 30px; font-weight: 700; color: var(--tekst); font-variant-numeric: tabular-nums; margin: 0 2px; }
+  .napredak .broj b.skok { animation: skok .45s var(--opruga); }
+  @keyframes skok { 40% { transform: scale(1.3); color: var(--ok); } }
+  .traka { flex: 1; min-width: 60px; height: 10px; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
+  .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 5px; transition: width .6s var(--glatko); }
 
-  /* Kamera 1:1 */
-  .sredina { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
-  .kamera { position: relative; width: min(100%, calc(100dvh - 300px)); aspect-ratio: 1 / 1; border-radius: 24px; overflow: hidden;
-    background: var(--kamera); box-shadow: var(--senka); }
+  /* Kamera zauzima sav preostali prostor; nišan je kvadrat u sredini (jedinice kontejnera) */
+  .kamera { position: relative; flex: 1; min-height: 160px; width: 100%; border-radius: 24px; overflow: hidden;
+    background: var(--kamera); box-shadow: var(--senka); container-type: size; }
   .kamera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .kamera .nisan { position: absolute; inset: 13%; pointer-events: none; transition: inset .3s var(--glatko); }
-  .kamera.cita .nisan { inset: 16%; }
+  .kamera .nisan { position: absolute; left: 50%; top: 50%; width: 66vmin; width: min(68cqw, 68cqh); aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%); pointer-events: none; transition: width .3s var(--glatko); }
+  .kamera.cita .nisan { width: min(60cqw, 60cqh); }
   .kamera .nisan::before, .kamera .nisan::after, .kamera .nisan i::before, .kamera .nisan i::after {
     content: ""; position: absolute; width: 36px; height: 36px; border: 5px solid #f5ecc2; }
   .kamera .nisan::before { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 12px 0 0 0; }
   .kamera .nisan::after { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 12px 0 0; }
   .kamera .nisan i::before { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 12px; }
   .kamera .nisan i::after { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 12px 0; }
-  .kamera .linija { position: absolute; left: 15%; right: 15%; height: 3px; top: 15%; border-radius: 2px;
+  .kamera .linija { position: absolute; left: 6%; right: 6%; height: 3px; top: 6%; border-radius: 2px;
     background: linear-gradient(90deg, transparent, #f5ecc2, transparent); box-shadow: 0 0 12px #f5ecc2;
     animation: skeniranje 2.2s ease-in-out infinite; opacity: .9; }
-  @keyframes skeniranje { 50% { top: 85%; } }
+  @keyframes skeniranje { 50% { top: 93%; } }
   .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
     color: #f5ecc2; background: linear-gradient(transparent, rgba(5, 18, 48, .75)); }
   .kamera .pokreni { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
     background: var(--kamera); color: #f5ecc2; font-size: 20px; font-weight: 800; }
   .kamera .pokreni svg { width: 68px; height: 68px; animation: dise 2s ease-in-out infinite; }
   @keyframes dise { 50% { transform: scale(1.08); opacity: .8; } }
-  .kamera .pokreni small { font-size: 14px; font-weight: 500; opacity: .8; }
+  .kamera .rezerva { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 20px; text-align: center; background: var(--kamera); color: #f5ecc2; }
+  .kamera .rezerva > svg { width: 52px; height: 52px; }
+  .kamera .rezerva h3 { margin: 0; font-size: 21px; }
+  .kamera .rezerva p { margin: 0; font-size: 15px; line-height: 1.45; opacity: .85; max-width: 320px; }
+  .kamera .rezerva .dugme { min-height: 52px; padding: 0 22px; }
+  .kamera .rezerva .sporedno { background: none; box-shadow: none; color: #f5ecc2; text-decoration: underline; min-height: 40px; font-size: 15px; }
 
-  .dugmad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dugmad { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .dugme { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 58px; border-radius: 16px;
     background: var(--povrs); color: var(--tekst); font-size: 17px; font-weight: 700; box-shadow: var(--senka); }
   .dugme svg { width: 22px; height: 22px; }
@@ -253,7 +267,7 @@
   <div class="prijava">
     <div class="naslovna">
       <img class="logo" src="ikona-192.png" alt="">
-      <div><h2>Dolazak gostiju</h2><div class="podnaslov">Dodela zahvalnica · uputstvo za prijavu</div></div>
+      <div><h2>Dodela zahvalnica</h2><div class="podnaslov">Uputstvo za prijavu skenera</div></div>
     </div>
     <div class="koraci" id="koraci">
       <div class="vrpca" id="vrpca">
@@ -339,28 +353,28 @@
 </div>
 
 <div class="ekran skriveno" id="ekran-rad">
-  <header>
-    <div>
-      <h1>Dolazak gostiju</h1>
-      <div class="nalog"><span id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
-    </div>
-    <div class="brojac"><b id="stiglo">…</b><span id="od">učitavam</span></div>
-  </header>
-  <div class="traka"><i id="traka"></i></div>
+  <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
+  <div class="napredak">
+    <div class="broj">Stiglo <b id="stiglo">…</b> <span id="od">od …</span></div>
+    <div class="traka"><i id="traka"></i></div>
+  </div>
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
-  <div class="sredina">
-    <div class="kamera" id="kamera">
-      <video id="video" playsinline muted></video>
-      <div class="nisan"><i></i></div>
-      <div class="linija skriveno" id="linija"></div>
-      <div class="status" id="status">Usmerite kameru na QR kod</div>
-      <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje<small>Kamera ostaje upaljena</small></button>
+  <div class="kamera" id="kamera">
+    <video id="video" playsinline muted></video>
+    <div class="nisan"><i></i><div class="linija skriveno" id="linija"></div></div>
+    <div class="status" id="status">Usmerite kameru na QR kod</div>
+    <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje</button>
+    <div class="rezerva skriveno" id="rezerva">
+      <svg><use href="#i-pazi"/></svg>
+      <h3>Kamera ne može da se uključi</h3>
+      <p id="rezerva-razlog">Dozvolite kameru u podešavanjima pregledača. Do tada QR kod možete da slikate.</p>
+      <label class="dugme glavno" for="slika"><svg><use href="#i-kamera"/></svg>Slikaj QR kod</label>
+      <button class="dugme sporedno" id="ponovo">Pokušaj ponovo kameru</button>
     </div>
+    <input id="slika" class="skriveno" type="file" accept="image/*" capture="environment">
   </div>
   <div class="dugmad">
-    <button class="dugme" id="otvori-pretragu"><svg><use href="#i-trazi"/></svg>Pretraga</button>
-    <label class="dugme" for="slika"><svg><use href="#i-kamera"/></svg>Slikaj QR</label>
-    <input id="slika" class="skriveno" type="file" accept="image/*" capture="environment">
+    <button class="dugme" id="otvori-pretragu"><svg><use href="#i-trazi"/></svg>Pretraga po imenu, broju ili telefonu</button>
   </div>
 </div>
 
@@ -374,6 +388,7 @@
 </div>
 
 <div class="rezultat skriveno" id="rezultat" role="alert"></div>
+<div class="dno-safari"></div>
 <canvas id="platno" class="skriveno"></canvas>
 
 <script>
@@ -625,7 +640,9 @@
   }
   async function ukljuci() {
     try { zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)(); zvuk.resume(); } catch (e) {}
+    $('rezerva').classList.add('skriveno');
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { const e = new Error('nema'); e.name = 'NotSupportedError'; throw e; }
       if ('BarcodeDetector' in window) {
         try { if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) detektor = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) {}
       }
@@ -638,9 +655,18 @@
       kadar();
     } catch (e) {
       tok = null;
-      prikazi({ status: 'greska', poruka: 'Kamera ne radi (' + (e.name || e) + '). Dozvolite kameru u podešavanjima pregledača ili koristite Slikaj QR.' });
+      const razlog = {
+        NotAllowedError: 'Pristup kameri je odbijen. Dozvolite kameru u podešavanjima pregledača za ovaj sajt.',
+        NotFoundError: 'Telefon nema kameru koju pregledač vidi.',
+        NotReadableError: 'Kameru trenutno koristi druga aplikacija. Zatvorite je i pokušajte ponovo.',
+        NotSupportedError: 'Ovaj pregledač ne daje kameru stranici. Probajte Safari ili Chrome.',
+      }[e.name] || 'Kamera nije dostupna (' + (e.name || e) + ').';
+      $('rezerva-razlog').textContent = razlog + ' Do tada QR kod možete da slikate.';
+      $('pokreni').classList.add('skriveno');
+      $('rezerva').classList.remove('skriveno');
     }
   }
+  $('ponovo').addEventListener('click', ukljuci);
   let bravica = null;
   async function budan() {
     try { if ('wakeLock' in navigator && !bravica) { bravica = await navigator.wakeLock.request('screen'); bravica.addEventListener('release', () => { bravica = null; }); } } catch (e) {}
