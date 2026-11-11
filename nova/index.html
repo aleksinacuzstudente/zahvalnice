@@ -74,12 +74,13 @@
   /* Bez zumiranja: dupli dodir (Dalje više puta) i štipanje ne uvećavaju stranicu, kao u aplikaciji */
   html, body, button, .dugme, label { touch-action: manipulation; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
-    background: var(--pozadina); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
+    background: var(--traka, var(--pozadina)); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
+  /* Trake se boje bez prelaza: Safari očita boju u trenutku promene, pa bi uhvatio staru boju sa početka prelaza */
   h1, h2, h3, .naslov, .ime { font-family: var(--naslovni); }
   /* Safari na iPhone-u boji svoju donju traku po elementu uz dno ekrana: ovde je to boja pozadine */
-  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dno) + 12px); background: var(--traka, var(--pozadina)); z-index: 1; pointer-events: none; transition: background .25s; }
+  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dno) + 12px); background: var(--traka, var(--pozadina)); z-index: 1; pointer-events: none; }
   /* Isto za vrh (notch, Dynamic Island): Safari boji traku po elementu uz vrh, pa tu uvek stoji boja ekrana, i vraća se kad rezultat nestane */
-  .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: var(--vrh); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; transition: background .25s; }
+  .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: var(--vrh); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; }
   button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
   button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   .skriveno { display: none !important; }
