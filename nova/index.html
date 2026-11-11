@@ -208,7 +208,12 @@
   /* Dok kamera radi, uglovi nišana mirno dišu (bez „lasera“) */
   .kamera .linija { display: none; }
   .kamera:has(.linija:not(.skriveno)) .nisan { animation: nisan 2.6s ease-in-out infinite; }
-  .kamera.cita .nisan { animation: none; }
+  .kamera.cita .nisan { animation: none; opacity: .35; }
+  .kamera .obris { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .kamera .obris polygon { fill: rgba(26, 116, 68, .28); stroke: #f5ecc2; stroke-width: 5; stroke-linejoin: round;
+    transform-box: fill-box; transform-origin: center; animation: uhvacen .3s var(--opruga) both; }
+  @keyframes uhvacen { from { opacity: 0; transform: scale(1.25); } to { opacity: 1; transform: none; } }
+  .kamera.cita .status { background: linear-gradient(transparent, rgba(26, 60, 30, .8)); }
   @keyframes nisan { 50% { scale: 1.035; opacity: .75; } }
   .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
     color: var(--na-kameri); background: linear-gradient(transparent, rgba(40, 0, 20, .7)); }
@@ -261,7 +266,8 @@
   /* Pretraga preko celog ekrana, prati tastaturu */
   .pretraga { position: fixed; left: 0; right: 0; top: 0; z-index: 21; height: 100dvh; background: var(--pozadina);
     display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px 10px; animation: gore .35s var(--glatko) both; }
-  .pretraga.izlazi { animation: dole .25s ease-in both; }
+  .pretraga.izlazi { animation: bledi .2s ease-out both; pointer-events: none; }
+  @keyframes bledi { to { opacity: 0; } }
   .pretraga::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 100vh; background: var(--pozadina); }
   html.trazi #ekran-rad { visibility: hidden; }
   @keyframes gore { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -412,6 +418,7 @@
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
   <div class="kamera" id="kamera">
     <video id="video" playsinline muted></video>
+    <svg class="obris" id="obris"></svg>
     <div class="nisan"><i></i><div class="linija skriveno" id="linija"></div></div>
     <div class="status" id="status">Usmerite kameru na QR kod</div>
     <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje</button>
@@ -612,11 +619,13 @@
   async function upisi(po, vrednost) {
     if (salje) return;
     salje = true;
-    $('status').textContent = 'Upisujem…';
+    const poznat = gosti.find((x) => (po === 'kod' ? x.kod === vrednost : x.broj === vrednost));
+    $('status').innerHTML = poznat ? '<b>' + ime(poznat) + '</b> · upisujem…' : 'Kod pročitan · proveravam…';
     $('kamera').classList.add('cita');
     try {
       prikazi(await upisiGosta(po, vrednost));
     } finally {
+      obris(null);
       salje = false;
       $('status').textContent = 'Usmerite kameru na QR kod';
       $('kamera').classList.remove('cita');
@@ -700,33 +709,63 @@
 
   // ---------- Kamera ----------
   let poslednji = '', poslednjiU = 0;
-  function procitan(tekst) {
+  function procitan(tekst, polozaj) {
     const m = String(tekst).match(/[?&]k=([A-Za-z0-9]+)/);
     const kod = (m ? m[1] : String(tekst)).trim().toUpperCase();
     const sad = Date.now();
     if (salje || rezultatOtvoren || (kod === poslednji && sad - poslednjiU < 4000)) return;
     poslednji = kod; poslednjiU = sad;
+    // Odmah se vidi da je kod uhvaćen: obris oko QR-a, kratak zvuk i ime gosta iz spiska dok server upisuje.
+    if (polozaj) obris(polozaj);
+    klik();
     upisi('kod', kod);
   }
   let tok = null, detektor = null;
   const video = $('video'), platno = $('platno'), ctx = platno.getContext('2d', { willReadFrequently: true });
+  // Čita se samo kvadrat oko nišana (80 % kraće strane slike), u punoj rezoluciji do 800 px: QR je krupniji, a posla manje,
+  // pa se čita i do 20 puta u sekundi. Ne čita se dok je otvorena pretraga, prozor ili rezultat.
+  const ISECAK = 0.8, NAJVISE = 800;
   async function kadar() {
     if (!tok) return;
-    if (video.readyState >= 2 && !salje && !rezultatOtvoren) {
+    const zauzeto = salje || rezultatOtvoren || document.documentElement.classList.contains('trazi') || !$('prozor').classList.contains('skriveno');
+    if (video.readyState >= 2 && video.videoWidth && !zauzeto) {
       try {
+        const vw = video.videoWidth, vh = video.videoHeight, strana = Math.round(Math.min(vw, vh) * ISECAK);
+        const sx = Math.round((vw - strana) / 2), sy = Math.round((vh - strana) / 2), n = Math.min(strana, NAJVISE);
+        platno.width = n; platno.height = n;
+        ctx.drawImage(video, sx, sy, strana, strana, 0, 0, n, n);
+        let tekst = null, tacke = null;
         if (detektor) {
-          const kodovi = await detektor.detect(video);
-          if (kodovi.length) procitan(kodovi[0].rawValue);
+          const k = await detektor.detect(platno);
+          if (k.length) { tekst = k[0].rawValue; tacke = k[0].cornerPoints; }
         } else {
-          const w = 640, h = Math.round(video.videoHeight * w / video.videoWidth) || 480;
-          platno.width = w; platno.height = h;
-          ctx.drawImage(video, 0, 0, w, h);
-          const qr = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' });
-          if (qr && qr.data) procitan(qr.data);
+          const qr = jsQR(ctx.getImageData(0, 0, n, n).data, n, n, { inversionAttempts: 'dontInvert' });
+          if (qr && qr.data) { tekst = qr.data; const l = qr.location; tacke = [l.topLeftCorner, l.topRightCorner, l.bottomRightCorner, l.bottomLeftCorner]; }
         }
+        if (tekst) procitan(tekst, tacke && { tacke, sx, sy, k: strana / n });
       } catch (e) {}
     }
-    setTimeout(() => requestAnimationFrame(kadar), 120);
+    setTimeout(kadar, 50);
+  }
+  // Obris uhvaćenog QR-a preko slike kamere (video je „cover“, pa se tačke preračunaju u koordinate okvira).
+  function obris(o) {
+    const svg = $('obris'), el = $('kamera');
+    if (!o) { svg.innerHTML = ''; return; }
+    const cw = el.clientWidth, ch = el.clientHeight, vw = video.videoWidth, vh = video.videoHeight;
+    const r = Math.max(cw / vw, ch / vh), ox = (cw - vw * r) / 2, oy = (ch - vh * r) / 2;
+    const t = o.tacke.map((p) => [(ox + (o.sx + p.x * o.k) * r).toFixed(1), (oy + (o.sy + p.y * o.k) * r).toFixed(1)].join(',')).join(' ');
+    svg.setAttribute('viewBox', '0 0 ' + cw + ' ' + ch);
+    svg.innerHTML = '<polygon points="' + t + '"/>';
+  }
+  function klik() {
+    try {
+      zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)();
+      const o = zvuk.createOscillator(), g = zvuk.createGain();
+      o.frequency.value = 1320; o.connect(g); g.connect(zvuk.destination);
+      g.gain.setValueAtTime(0.12, zvuk.currentTime); g.gain.exponentialRampToValueAtTime(0.001, zvuk.currentTime + 0.06);
+      o.start(); o.stop(zvuk.currentTime + 0.06);
+      if (navigator.vibrate) navigator.vibrate(25);
+    } catch (e) {}
   }
   async function ukljuci() {
     try { zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)(); zvuk.resume(); } catch (e) {}
@@ -737,6 +776,7 @@
         try { if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) detektor = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) {}
       }
       tok = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false });
+      try { await tok.getVideoTracks()[0].applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
       video.srcObject = tok;
       await video.play();
       $('pokreni').classList.add('skriveno');
@@ -809,7 +849,7 @@
   }
   function uklopi() {
     const vv = window.visualViewport, el = $('pretraga');
-    if (!vv || el.classList.contains('skriveno')) return;
+    if (!vv || el.classList.contains('skriveno') || el.classList.contains('izlazi')) return;
     el.style.top = vv.offsetTop + 'px';
     el.style.height = vv.height + 'px';
     window.scrollTo(0, 0);
@@ -825,10 +865,11 @@
   }
   function zatvoriPretragu() {
     const el = $('pretraga');
+    if (el.classList.contains('skriveno') || el.classList.contains('izlazi')) return;
+    el.classList.add('izlazi');
     $('q').blur();
     document.documentElement.classList.remove('trazi');
-    el.classList.add('izlazi');
-    setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); }, 240);
+    setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); el.style.top = ''; el.style.height = ''; }, 200);
   }
   $('otvori-pretragu').addEventListener('click', otvoriPretragu);
   $('zatvori-pretragu').addEventListener('click', zatvoriPretragu);
