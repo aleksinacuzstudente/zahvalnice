@@ -188,6 +188,8 @@
   .napredak .broj { white-space: nowrap; font-family: var(--telo); font-size: 18px; line-height: 1; font-weight: 500; color: var(--tekst2); }
   .napredak .broj b { display: inline-block; font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
   .napredak .broj b.skok { animation: skok .45s var(--opruga); }
+  .napredak .ceka { font-size: 14px; font-weight: 700; color: var(--tekst2); }
+  .napredak .ceka.nema-veze { color: var(--upozorenje); }
   @keyframes skok { 40% { transform: scale(1.3); color: var(--ok); } }
   .traka { flex: 1; min-width: 60px; height: 10px; align-self: center; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
   .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 5px; transition: width .6s var(--glatko); }
@@ -417,7 +419,7 @@
 <div class="ekran skriveno" id="ekran-rad">
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
   <div class="napredak">
-    <div class="broj">Stiglo <b id="stiglo">…</b> <span id="od">od …</span></div>
+    <div class="broj">Stiglo <b id="stiglo">…</b> <span id="od">od …</span> <span class="ceka skriveno" id="ceka"></span></div>
     <div class="traka"><i id="traka"></i></div>
   </div>
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
@@ -561,7 +563,7 @@
   // Obnova prijave na dodir (Safari dozvoljava Google prozor samo posle dodira).
   function produzi() {
     $('istice').classList.add('skriveno');
-    return traziToken('').then(() => ucitaj()).then(() => { $('nalog').textContent = mejl; });
+    return traziToken('').then(() => ucitaj()).then(() => { $('nalog').textContent = mejl; posalji(); });
   }
   setInterval(() => {
     const ostalo = tokenDo - Date.now();
@@ -596,6 +598,10 @@
       red: i + 2, broj: r[k.Broj] || '', kod: String(r[k.Kod] || '').trim().toUpperCase(), ime: r[k.Ime] || '', prezime: r[k.Prezime] || '',
       telefon: r[k.Telefon] || '', uloga: r[k.Uloga] || '', stigao: r[k.Stigao] || '', vreme: r[k.Vreme] || '', upisao: r[k.Upisao] || '',
     })).filter((g) => g.broj);
+    cekaUpis.forEach((p) => {
+      const g = gosti.find((x) => x.kod === p.kod);
+      if (g && !g.stigao) Object.assign(g, { stigao: 'DA', vreme: p.vreme, upisao: mejl });
+    });
     stanje();
   }
   function stanje() {
@@ -621,22 +627,73 @@
       return e.istekla ? { status: 'istekla' } : e.pristup ? { status: 'pristup' } : { status: 'greska', poruka: e.message };
     }
   }
-  async function upisi(po, vrednost) {
+  // Kamera: odluka odmah po spisku na telefonu (već ušao ili upisan), a server upisuje u pozadini, redom.
+  // Upisi koji čekaju čuvaju se na telefonu, pa ne nestaju ni kad se stranica osveži ili nestane interneta.
+  // Server pod zaključavanjem javlja ako je drugi skener istog gosta upisao pre nas; tada se pokaže upozorenje.
+  function ucitajRed() { try { return JSON.parse(localStorage.getItem('nova-red') || '[]'); } catch (e) { return []; } }
+  let cekaUpis = ucitajRed(), saljeRed = false, nemaVeze = false, tajmerReda = null, upozorenja = [];
+  function sacuvajRed() { try { localStorage.setItem('nova-red', JSON.stringify(cekaUpis)); } catch (e) {} }
+  function sat() { return new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Belgrade' }); }
+  function osveziRed() {
+    // Vidi se samo kad server ne odgovara; inače se upis pošalje za sekundu-dve i natpis bi samo treptao.
+    const el = $('ceka'), n = nemaVeze ? cekaUpis.length : 0;
+    el.classList.toggle('skriveno', !n);
+    el.classList.add('nema-veze');
+    el.textContent = n ? '· nema veze, ' + n + ' čeka slanje' : '';
+  }
+  async function posalji() {
+    if (saljeRed || !cekaUpis.length) return osveziRed();
+    saljeRed = true; clearTimeout(tajmerReda);
+    const p = cekaUpis[0];
+    let o;
+    try { o = await server('upisi', { po: 'kod', vrednost: p.kod }); }
+    catch (e) {
+      saljeRed = false;
+      if (e.istekla) { $('istice').classList.remove('skriveno'); return osveziRed(); }
+      nemaVeze = true; osveziRed();
+      tajmerReda = setTimeout(posalji, 3000);
+      return;
+    }
+    nemaVeze = false;
+    cekaUpis.shift(); sacuvajRed(); osveziRed();
+    primi(o.values);
+    const g = gosti.find((x) => x.red === o.red);
+    if (o.status === 'vec' && g && g.upisao !== mejl) upozorenja.push({ status: 'sukob', gost: g });
+    if (o.status === 'nema') upozorenja.push({ status: 'nema', trazeno: p.kod });
+    saljeRed = false;
+    sledeceUpozorenje();
+    posalji();
+  }
+  function sledeceUpozorenje() {
+    if (upozorenja.length && !rezultatOtvoren && !salje) prikazi(upozorenja.shift());
+  }
+  function upisi(po, vrednost) {
     if (salje) return;
     salje = true;
-    const poznat = gosti.find((x) => (po === 'kod' ? x.kod === vrednost : x.broj === vrednost));
-    $('upis-ime').innerHTML = poznat ? ime(poznat) : '';
-    $('upis').querySelector('.upis-tekst').textContent = poznat ? 'Upisujem…' : 'Kod pročitan, proveravam…';
+    const g = gosti.find((x) => x.kod === vrednost);
+    $('upis-ime').innerHTML = g ? ime(g) : '';
+    $('upis').querySelector('.upis-tekst').textContent = g ? 'Proveravam…' : 'Kod pročitan, proveravam…';
     $('upis').classList.remove('skriveno');
     $('kamera').classList.add('cita');
-    try {
-      prikazi(await upisiGosta(po, vrednost));
-    } finally {
+    const gotovo = () => {
       $('upis').classList.add('skriveno');
-      salje = false;
-      $('status').textContent = 'Usmerite kameru na QR kod';
       $('kamera').classList.remove('cita');
+      salje = false;
+    };
+    if (!g) {
+      // Kod koji telefon ne zna: možda je gost dodat posle učitavanja, pa pita server.
+      upisiGosta(po, vrednost).then((r) => { gotovo(); prikazi(r); });
+      return;
     }
+    setTimeout(() => {
+      gotovo();
+      if (g.stigao) return prikazi({ status: 'vec', gost: g });
+      Object.assign(g, { stigao: 'DA', vreme: sat(), upisao: mejl });
+      cekaUpis.push({ kod: g.kod, vreme: g.vreme }); sacuvajRed();
+      stanje();
+      prikazi({ status: 'ok', gost: g });
+      posalji();
+    }, 350);
   }
 
   // ---------- Rezultat ----------
@@ -674,6 +731,9 @@
     } else if (r.status === 'vec') {
       html = ikona('i-x') + '<div class="naslov">VEĆ UŠAO</div><div class="ime">' + ime(r.gost) + '</div>'
         + '<div class="detalj">u ' + esc(r.gost.vreme) + '<br>upisao ' + esc(r.gost.upisao) + '</div>';
+    } else if (r.status === 'sukob') {
+      html = ikona('i-x') + '<div class="naslov">PAŽNJA: KOD JE UPOTREBLJEN DVAPUT</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">Već je ušao u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '.<br>Javite štabu.</div>';
     } else if (r.status === 'nema') {
       klasa = 'upozorenje';
       html = ikona('i-pazi') + '<div class="naslov">NEMA NA SPISKU</div><div class="detalj">Kod ' + esc(r.trazeno)
@@ -705,7 +765,7 @@
     if (!rezultatOtvoren) return;
     el.classList.add('izlazi');
     boja(null);
-    setTimeout(() => { el.className = 'rezultat skriveno'; rezultatOtvoren = false; poslednjiU = Date.now(); }, 240);
+    setTimeout(() => { el.className = 'rezultat skriveno'; rezultatOtvoren = false; poslednjiU = Date.now(); sledeceUpozorenje(); }, 240);
   }
   $('rezultat').addEventListener('click', () => {
     const istekla = $('rezultat').dataset.status === 'istekla';
@@ -1040,7 +1100,8 @@
       document.documentElement.classList.remove('ucitava');
       if (kodIzUrla) { const kod = kodIzUrla; kodIzUrla = null; history.replaceState(null, '', OVDE); procitan(kod); }
       clearInterval(osvezavanje);
-      osvezavanje = setInterval(() => { if (!salje && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
+      osvezavanje = setInterval(() => { if (!salje && !saljeRed && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
+      posalji();
     } catch (e) {
       prikaziPrijavu('');
       greskaPrijave(e);
