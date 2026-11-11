@@ -9,8 +9,8 @@
 <meta name="theme-color" content="#7d133a" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Zahvalnice">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zahvalnice 2">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="ikona-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -79,8 +79,10 @@
   h1, h2, h3, .naslov, .ime { font-family: var(--naslovni); }
   /* Safari na iPhone-u boji svoju donju traku po elementu uz dno ekrana: ovde je to boja pozadine */
   .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dno) + 12px); background: var(--traka, var(--pozadina)); z-index: 1; pointer-events: none; }
+  /* U Safariju (ne PWA) je safe-area-inset-top 0, pa traka mora da ima bar 3px, inače je Safari ne vidi i boju uzme
+     sa potvrde dok se još širi. Boja se menja odjednom (Safari je očita jednom), a potvrda se pojavi brzim pretapanjem, da idu zajedno. */
   /* Isto za vrh (notch, Dynamic Island): Safari boji traku po elementu uz vrh, pa tu uvek stoji boja ekrana, i vraća se kad rezultat nestane */
-  .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: var(--vrh); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; }
+  .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: max(var(--vrh), 3px); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; }
   button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
   button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   .skriveno { display: none !important; }
@@ -246,7 +248,8 @@
   /* Rezultat preko celog ekrana: talas iz sredine, ikonica iskače, kvačica se iscrtava */
   .rezultat { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
     gap: 14px; padding: calc(var(--vrh) + 13vh) 24px calc(var(--dno) + 120px); text-align: center; color: var(--na-boji);
-    animation: talas .45s var(--glatko) both; }
+    animation: pojava .18s ease-out both; }
+  @keyframes pojava { from { opacity: 0; } }
   .rezultat.ok { background: var(--ok); }
   .rezultat.lose { background: var(--lose); }
   .rezultat.upozorenje { background: var(--upozorenje); }
