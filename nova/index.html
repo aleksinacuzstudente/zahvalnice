@@ -99,14 +99,14 @@
   .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
     color: var(--tekst); font-size: 14px; font-weight: 600; }
 
-  /* PWA na iPhone-u (stranica ispod statusne trake): 100dvh i innerHeight su kraći od ekrana za visinu statusne trake
-     (WebKit 301108), a samo 100lvh daje punu visinu. U Safariju ostaje 100dvh. */
-  @media (display-mode: standalone) { html { --visina: 100lvh; } }
-  /* U PWA nema Safari traka, pa ni trake za njihovu boju: rezultat sam pokriva ceo ekran */
-  @media (display-mode: standalone) { .vrh-safari, .dno-safari { display: none; } }
-  @media (display-mode: standalone) { html, body { height: var(--visina); }
-    .rezultat, html.kratko.vodic-otvoren .vodic { bottom: auto; height: var(--visina); } }
-  .ekran { height: 100vh; height: var(--visina, 100dvh); display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
+  /* PWA na iPhone-u (iOS 26, WebKit 301108): donji pojas ekrana (100lvh - 100dvh) se ne iscrtava, pa sadržaj ostaje
+     u 100dvh, a od donjeg razmaka za crtu početnog ekrana oduzima se taj mrtvi pojas (on je već prekriva). */
+  @media (display-mode: standalone) {
+    :root { --dno: max(0px, calc(env(safe-area-inset-bottom, 0px) - (100lvh - 100dvh))); }
+    /* U PWA nema Safari traka, pa ni trake za njihovu boju: rezultat sam pokriva ceo ekran */
+    .vrh-safari, .dno-safari { display: none; }
+  }
+  .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
     gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
   @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   /* Krug koji se vrti: „Učitavam…“ posle prijave i dugme „Upisujem…“ */
@@ -597,6 +597,8 @@
     if (o.greska === 'prijava') { token = null; tokenDo = 0; cuvaj('nova-token', { mejl }); const e = new Error('Prijava je istekla.'); e.istekla = true; throw e; }
     if (o.greska === 'pristup') { const e = new Error('PRISTUP'); e.pristup = true; throw e; }
     if (o.greska) throw new Error(o.poruka || o.greska);
+    // Server posle Google prijave daje svoju propusnicu na 24 sata (Google važi sat), pa se dalje šalje ona.
+    if (o.sesija) { token = o.sesija; tokenDo = Date.now() + (Number(o.sesijaTraje) - 60) * 1000; mejl = o.mejl || mejl; cuvaj('nova-token', { token, do: tokenDo, mejl }); }
     return o;
   }
 
@@ -1123,7 +1125,7 @@
     const t = token;
     token = null; tokenDo = 0; mejl = '';
     cuvaj('nova-token', null); cuvaj('nova-stanje', null);
-    try { if (t && window.google && google.accounts) google.accounts.oauth2.revoke(t, () => {}); } catch (e) {}
+    try { if (t && !t.startsWith('s1.') && window.google && google.accounts) google.accounts.oauth2.revoke(t, () => {}); } catch (e) {}
     clearInterval(osvezavanje);
     prikaziPrijavu('');
   }
