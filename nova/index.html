@@ -97,6 +97,18 @@
   .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
     gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
   @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  /* Prelaz posle prijave: dugme se vrti dok stižu gosti, uputstvo izbledi, delovi ekrana za skeniranje uplove redom */
+  .dugme.radi { pointer-events: none; opacity: .9; }
+  .dugme .vrti { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: vrti .7s linear infinite; }
+  @keyframes vrti { to { transform: rotate(360deg); } }
+  #ekran-prijava.odlazi { animation: odlazi .3s var(--glatko) forwards; }
+  @keyframes odlazi { to { opacity: 0; transform: translateY(-12px) scale(.97); } }
+  #ekran-rad.dolazi > * { animation: ulaz .55s var(--glatko) both; }
+  #ekran-rad.dolazi > :nth-child(2) { animation-delay: .06s; }
+  #ekran-rad.dolazi > :nth-child(3) { animation-delay: .1s; }
+  #ekran-rad.dolazi > :nth-child(4) { animation-delay: .14s; }
+  #ekran-rad.dolazi > :nth-child(5) { animation-delay: .2s; }
+  html.ucitava #ekran-ucitava .vrti { margin-right: 10px; }
 
   /* Prijava sa uputstvom korak po korak */
   .prijava { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
@@ -300,7 +312,7 @@
   <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
 </svg>
 
-<div class="ekran" id="ekran-ucitava">Učitavam…</div>
+<div class="ekran" id="ekran-ucitava"><span class="vrti"></span>Učitavam…</div>
 <div class="ekran" id="ekran-prijava">
   <div class="prijava">
     <div class="naslovna">
@@ -459,6 +471,7 @@
   const povratak = new URLSearchParams(location.hash.slice(1));
   let povratakObrada = null;
   if (povratak.get('access_token') || povratak.get('error')) {
+    document.documentElement.classList.add('ucitava');  // povratak sa Google-a: „Učitavam…“ dok ne stignu gosti
     const st = citaj('nova-stanje') || {};
     history.replaceState(null, '', OVDE);
     if (st.kod) kodIzUrla = st.kod;
@@ -796,6 +809,7 @@
     $('vrpca').style.transform = 'translateX(' + (-100 * korak) + '%)';
     [...$('tacke').children].forEach((t, i) => t.classList.toggle('ovde', i === korak));
     $('nazad').disabled = korak === 0;
+    $('dalje').classList.remove('radi');
     const poslednji = korak === brojKoraka - 1;
     $('dalje').textContent = poslednji ? 'Prijavite se' : 'Dalje';
     $('dalje').classList.toggle('glavno', poslednji);
@@ -889,13 +903,24 @@
     idiNa(0);  // uputstvo uvek od prvog koraka
   }
   let osvezavanje = null;
+  function cekanje(tekst) {
+    const d = $('dalje');
+    d.classList.add('radi');
+    d.innerHTML = '<span class="vrti"></span>' + tekst;
+  }
   async function pocni() {
     try {
+      if (!$('ekran-prijava').classList.contains('skriveno')) cekanje('Učitavam goste…');
       await ucitaj();
       $('nalog').textContent = mejl;
+      const html = document.documentElement, prijavaSeVidi = !html.classList.contains('ucitava') && !$('ekran-prijava').classList.contains('skriveno');
+      if (prijavaSeVidi) { $('ekran-prijava').classList.add('odlazi'); await new Promise((r) => setTimeout(r, 280)); }
       $('ekran-prijava').classList.add('skriveno');
+      $('ekran-prijava').classList.remove('odlazi');
       $('ekran-rad').classList.remove('skriveno');
-      document.documentElement.classList.remove('ucitava');
+      html.classList.remove('ucitava');
+      $('ekran-rad').classList.add('dolazi');
+      setTimeout(() => $('ekran-rad').classList.remove('dolazi'), 900);
       if (kodIzUrla) { const kod = kodIzUrla; kodIzUrla = null; history.replaceState(null, '', OVDE); procitan(kod); }
       clearInterval(osvezavanje);
       osvezavanje = setInterval(() => { if (!salje && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
@@ -921,7 +946,8 @@
   }));
   function prijava() {
     $('prijava-poruka').textContent = '';
-    traziToken(token || mejl ? '' : 'select_account').then(pocni).catch(greskaPrijave);
+    cekanje('Prijavljujem…');
+    traziToken(token || mejl ? '' : 'select_account').then(pocni).catch((e) => { idiNa(korak); greskaPrijave(e); });
   }
   if (povratakObrada) povratakObrada.then(pocni).catch((e) => { prikaziPrijavu(''); greskaPrijave(e); });
   else if (token) pocni();
