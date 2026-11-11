@@ -24,7 +24,7 @@
 -->
 <script>
   // Sačuvana prijava → odmah ekran za skeniranje, bez treptaja ekrana za prijavu.
-  try { const t = JSON.parse(localStorage.getItem('nova-token') || 'null'); if (t && t.token && t.do > Date.now() + 60000) document.documentElement.classList.add('prijavljen'); } catch (e) {}
+  try { const t = JSON.parse(localStorage.getItem('nova-token') || 'null'); if (t && t.token && t.do > Date.now() + 60000) document.documentElement.classList.add('ucitava'); } catch (e) {}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,8 +79,10 @@
   button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
   button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   .skriveno { display: none !important; }
-  html.prijavljen #ekran-prijava { display: none !important; }
-  html.prijavljen #ekran-rad { display: flex !important; }
+  /* Sačuvana prijava: dok server ne potvrdi, samo „Učitavam…“ (ni uputstvo ni kamera) */
+  #ekran-ucitava { display: none; }
+  html.ucitava #ekran-prijava, html.ucitava #ekran-rad { display: none !important; }
+  html.ucitava #ekran-ucitava { display: flex; align-items: center; justify-content: center; color: var(--tekst2); font-weight: 700; font-size: 17px; }
   /* Traka: prijava uskoro ističe */
   .istice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
     background: var(--upozorenje); color: var(--na-boji); font-weight: 700; font-size: 15px; animation: ulaz .3s var(--glatko) both; }
@@ -296,6 +298,7 @@
   <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
 </svg>
 
+<div class="ekran" id="ekran-ucitava">Učitavam…</div>
 <div class="ekran" id="ekran-prijava">
   <div class="prijava">
     <div class="naslovna">
@@ -505,7 +508,7 @@
   }
   setInterval(() => {
     const ostalo = tokenDo - Date.now();
-    if (!$('ekran-rad').classList.contains('skriveno') || document.documentElement.classList.contains('prijavljen'))
+    if (!$('ekran-rad').classList.contains('skriveno') || document.documentElement.classList.contains('ucitava'))
       $('istice').classList.toggle('skriveno', !(token && ostalo < 5 * 60000));
   }, 15000);
 
@@ -517,8 +520,8 @@
     try {
       r = await fetch(SERVER, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(Object.assign({ akcija, token: t }, podaci || {})) });
-    } catch (e) { throw new Error(navigator.onLine === false ? 'Nema interneta. Proverite vezu.' : 'Server ne odgovara. Javite štabu.'); }
-    if (!r.ok) throw new Error('Server ne odgovara (greška ' + r.status + '). Javite štabu.');
+    } catch (e) { throw greska('server', navigator.onLine === false ? 'nema interneta' : 'nema odgovora'); }
+    if (!r.ok) throw greska('server', 'greška ' + r.status);
     let o;
     try { o = await r.json(); } catch (e) { throw new Error('Server nije odgovorio kako treba.'); }
     if (o.greska === 'prijava') { token = null; tokenDo = 0; cuvaj('nova-token', { mejl }); const e = new Error('Prijava je istekla.'); e.istekla = true; throw e; }
@@ -864,6 +867,7 @@
       odbijeno: ['Prijava nije odobrena', 'Na Google ekranu je izabrano <b>Cancel</b>. Pokušajte ponovo: izaberite nalog, pa <b>Continue</b>.', false],
       prekinuto: ['Prijava je prekinuta', 'Prozor za Google prijavu je zatvoren pre kraja. Pokušajte ponovo i prođite sve korake do <b>Continue</b>.', false],
       blokirano: ['Pregledač je blokirao prijavu', 'Pregledač nije dozvolio da se otvori Google prozor za prijavu. Dozvolite iskačuće prozore (pop-ups) za ovaj sajt u podešavanjima pregledača, pa pokušajte ponovo.', false],
+      server: ['Server ne odgovara', 'Prijava je prošla, ali server tabele gostiju ne odgovara' + (e.message ? ' (' + esc(e.message.replace(/^server \(|\)$/g, '')) + ')' : '') + '. Proverite internet, pa pokušajte ponovo. Ako se ponavlja, javite štabu.', false],
       ucitava: ['Google prijava se još učitava', 'Sačekajte par sekundi i proverite internet, pa pokušajte ponovo.', false],
     };
     const [naslov, tekst] = poruke[e.kod] || ['Prijava nije uspela', 'Nešto nije u redu sa Google prijavom' + (e.message ? ' (' + esc(e.message) + ')' : '') + '. Proverite internet i pokušajte ponovo.', false];
@@ -873,7 +877,7 @@
   // ---------- Početak ----------
   function prikaziPrijavu(poruka) {
     iskljuci();
-    document.documentElement.classList.remove('prijavljen');
+    document.documentElement.classList.remove('ucitava');
     $('ekran-rad').classList.add('skriveno');
     $('ekran-prijava').classList.remove('skriveno');
     $('prijava-poruka').textContent = poruka || '';
@@ -886,6 +890,7 @@
       $('nalog').textContent = mejl;
       $('ekran-prijava').classList.add('skriveno');
       $('ekran-rad').classList.remove('skriveno');
+      document.documentElement.classList.remove('ucitava');
       if (kodIzUrla) { const kod = kodIzUrla; kodIzUrla = null; history.replaceState(null, '', OVDE); procitan(kod); }
       clearInterval(osvezavanje);
       osvezavanje = setInterval(() => { if (!salje && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
