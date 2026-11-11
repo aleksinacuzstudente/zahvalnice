@@ -209,7 +209,16 @@
   .kamera .linija { display: none; }
   .kamera:has(.linija:not(.skriveno)) .nisan { animation: nisan 2.6s ease-in-out infinite; }
   .kamera.cita .nisan { animation: none; opacity: .35; }
-  .kamera.cita .status { background: linear-gradient(transparent, rgba(26, 60, 30, .8)); }
+  /* Upis u toku: kartica istog oblika kao kamera, uvučena za marginu ekrana (16 px), da se kamera vidi oko nje */
+  .kamera .upis { position: absolute; inset: 16px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 20px; text-align: center; background: var(--povrs); color: var(--tekst); box-shadow: 0 10px 30px rgba(40, 0, 20, .3);
+    animation: upis-ulaz .28s var(--glatko) both; }
+  @keyframes upis-ulaz { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+  .kamera .upis .vrti { width: 34px; height: 34px; border-width: 3.5px; color: var(--akcent); }
+  .kamera .upis-ime { font-family: var(--naslovni); font-size: clamp(24px, 7vw, 32px); font-weight: 800; line-height: 1.15; }
+  .kamera .upis-ime:empty { display: none; }
+  .kamera .upis-tekst { font-size: 16px; font-weight: 600; color: var(--tekst2); }
+  .kamera.cita .status { visibility: hidden; }
   @keyframes nisan { 50% { scale: 1.035; opacity: .75; } }
   .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
     color: var(--na-kameri); background: linear-gradient(transparent, rgba(40, 0, 20, .7)); }
@@ -416,6 +425,7 @@
     <video id="video" playsinline muted></video>
     <div class="nisan"><i></i><div class="linija skriveno" id="linija"></div></div>
     <div class="status" id="status">Usmerite kameru na QR kod</div>
+    <div class="upis skriveno" id="upis"><span class="vrti"></span><div class="upis-ime" id="upis-ime"></div><div class="upis-tekst">Upisujem…</div></div>
     <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje</button>
     <div class="rezerva skriveno" id="rezerva">
       <svg><use href="#i-pazi"/></svg>
@@ -615,11 +625,14 @@
     if (salje) return;
     salje = true;
     const poznat = gosti.find((x) => (po === 'kod' ? x.kod === vrednost : x.broj === vrednost));
-    $('status').innerHTML = poznat ? '<b>' + ime(poznat) + '</b> · upisujem…' : 'Kod pročitan · proveravam…';
+    $('upis-ime').innerHTML = poznat ? ime(poznat) : '';
+    $('upis').querySelector('.upis-tekst').textContent = poznat ? 'Upisujem…' : 'Kod pročitan, proveravam…';
+    $('upis').classList.remove('skriveno');
     $('kamera').classList.add('cita');
     try {
       prikazi(await upisiGosta(po, vrednost));
     } finally {
+      $('upis').classList.add('skriveno');
       salje = false;
       $('status').textContent = 'Usmerite kameru na QR kod';
       $('kamera').classList.remove('cita');
