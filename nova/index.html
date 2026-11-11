@@ -516,8 +516,8 @@
     try {
       r = await fetch(SERVER, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(Object.assign({ akcija, token: t }, podaci || {})) });
-    } catch (e) { throw new Error('Nema veze sa serverom. Proverite internet.'); }
-    if (!r.ok) throw new Error('Server: greška ' + r.status);
+    } catch (e) { throw new Error(navigator.onLine === false ? 'Nema interneta. Proverite vezu.' : 'Server ne odgovara. Javite štabu.'); }
+    if (!r.ok) throw new Error('Server ne odgovara (greška ' + r.status + '). Javite štabu.');
     let o;
     try { o = await r.json(); } catch (e) { throw new Error('Server nije odgovorio kako treba.'); }
     if (o.greska === 'prijava') { token = null; tokenDo = 0; cuvaj('nova-token', { mejl }); const e = new Error('Prijava je istekla.'); e.istekla = true; throw e; }
@@ -849,7 +849,7 @@
     $('ekran-rad').classList.add('skriveno');
     $('ekran-prijava').classList.remove('skriveno');
     $('prijava-poruka').textContent = poruka || '';
-    idiNa(mejl ? brojKoraka - 1 : 0);  // ponovna prijava istim nalogom: odmah dugme, bez celog uputstva
+    idiNa(0);  // uputstvo uvek od prvog koraka
   }
   let osvezavanje = null;
   async function pocni() {
@@ -888,7 +888,7 @@
   if (povratakObrada) povratakObrada.then(pocni).catch((e) => { prikaziPrijavu(''); greskaPrijave(e); });
   else if (token) pocni();
   else if (kodIzUrla) $('prijava-poruka').textContent = 'Prijavite se, pa se gost upisuje sam.';
-  if (!token && !povratakObrada) idiNa(mejl ? brojKoraka - 1 : 0);
+  if (!token && !povratakObrada) idiNa(0);
 </script>
 </body>
 </html>
