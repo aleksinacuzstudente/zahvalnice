@@ -209,10 +209,6 @@
   .kamera .linija { display: none; }
   .kamera:has(.linija:not(.skriveno)) .nisan { animation: nisan 2.6s ease-in-out infinite; }
   .kamera.cita .nisan { animation: none; opacity: .35; }
-  .kamera .obris { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-  .kamera .obris polygon { fill: rgba(26, 116, 68, .28); stroke: #f5ecc2; stroke-width: 5; stroke-linejoin: round;
-    transform-box: fill-box; transform-origin: center; animation: uhvacen .3s var(--opruga) both; }
-  @keyframes uhvacen { from { opacity: 0; transform: scale(1.25); } to { opacity: 1; transform: none; } }
   .kamera.cita .status { background: linear-gradient(transparent, rgba(26, 60, 30, .8)); }
   @keyframes nisan { 50% { scale: 1.035; opacity: .75; } }
   .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
@@ -418,7 +414,6 @@
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
   <div class="kamera" id="kamera">
     <video id="video" playsinline muted></video>
-    <svg class="obris" id="obris"></svg>
     <div class="nisan"><i></i><div class="linija skriveno" id="linija"></div></div>
     <div class="status" id="status">Usmerite kameru na QR kod</div>
     <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje</button>
@@ -625,7 +620,6 @@
     try {
       prikazi(await upisiGosta(po, vrednost));
     } finally {
-      obris(null);
       salje = false;
       $('status').textContent = 'Usmerite kameru na QR kod';
       $('kamera').classList.remove('cita');
@@ -709,14 +703,16 @@
 
   // ---------- Kamera ----------
   let poslednji = '', poslednjiU = 0;
-  function procitan(tekst, polozaj) {
+  // Isti kod se ne čita ponovo dok neprekidno stoji pred kamerom (gost još drži telefon posle zelenog ekrana);
+  // čim ga nema bar sekundu, može ponovo. poslednjiU je kada je taj kod poslednji put viđen.
+  function procitan(tekst) {
     const m = String(tekst).match(/[?&]k=([A-Za-z0-9]+)/);
     const kod = (m ? m[1] : String(tekst)).trim().toUpperCase();
     const sad = Date.now();
-    if (salje || rezultatOtvoren || (kod === poslednji && sad - poslednjiU < 4000)) return;
+    if (kod === poslednji && sad - poslednjiU < 1000) { poslednjiU = sad; return; }
+    if (salje || rezultatOtvoren) return;
     poslednji = kod; poslednjiU = sad;
-    // Odmah se vidi da je kod uhvaćen: obris oko QR-a, kratak zvuk i ime gosta iz spiska dok server upisuje.
-    if (polozaj) obris(polozaj);
+    // Odmah se vidi da je kod uhvaćen: kratak zvuk i ime gosta iz spiska dok server upisuje.
     klik();
     upisi('kod', kod);
   }
@@ -734,28 +730,18 @@
         const sx = Math.round((vw - strana) / 2), sy = Math.round((vh - strana) / 2), n = Math.min(strana, NAJVISE);
         platno.width = n; platno.height = n;
         ctx.drawImage(video, sx, sy, strana, strana, 0, 0, n, n);
-        let tekst = null, tacke = null;
+        let tekst = null;
         if (detektor) {
           const k = await detektor.detect(platno);
-          if (k.length) { tekst = k[0].rawValue; tacke = k[0].cornerPoints; }
+          if (k.length) tekst = k[0].rawValue;
         } else {
           const qr = jsQR(ctx.getImageData(0, 0, n, n).data, n, n, { inversionAttempts: 'dontInvert' });
-          if (qr && qr.data) { tekst = qr.data; const l = qr.location; tacke = [l.topLeftCorner, l.topRightCorner, l.bottomRightCorner, l.bottomLeftCorner]; }
+          if (qr && qr.data) tekst = qr.data;
         }
-        if (tekst) procitan(tekst, tacke && { tacke, sx, sy, k: strana / n });
+        if (tekst) procitan(tekst);
       } catch (e) {}
     }
     setTimeout(kadar, 50);
-  }
-  // Obris uhvaćenog QR-a preko slike kamere (video je „cover“, pa se tačke preračunaju u koordinate okvira).
-  function obris(o) {
-    const svg = $('obris'), el = $('kamera');
-    if (!o) { svg.innerHTML = ''; return; }
-    const cw = el.clientWidth, ch = el.clientHeight, vw = video.videoWidth, vh = video.videoHeight;
-    const r = Math.max(cw / vw, ch / vh), ox = (cw - vw * r) / 2, oy = (ch - vh * r) / 2;
-    const t = o.tacke.map((p) => [(ox + (o.sx + p.x * o.k) * r).toFixed(1), (oy + (o.sy + p.y * o.k) * r).toFixed(1)].join(',')).join(' ');
-    svg.setAttribute('viewBox', '0 0 ' + cw + ' ' + ch);
-    svg.innerHTML = '<polygon points="' + t + '"/>';
   }
   function klik() {
     try {
