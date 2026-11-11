@@ -104,7 +104,8 @@
   .prijava .poruka { color: var(--lose); font-weight: 700; text-align: center; margin: 0; min-height: 0; }
   .prijava .poruka:empty { display: none; }
   .koraci { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--povrs); border-radius: 22px; box-shadow: var(--senka); padding: 0 0 12px; overflow: hidden; }
-  .koraci .vrpca { flex: 1; min-height: 0; min-width: 0; display: flex; transition: transform .45s var(--glatko); }
+  .koraci .vrpca { flex: 1; min-height: 0; min-width: 0; display: flex; transition: transform .45s var(--glatko); touch-action: pan-y; will-change: transform; }
+  .koraci .vrpca.vuce { transition: none; }
   .korak { flex: 0 0 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 0; }
   .korak .oznaka { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--akcent); }
   @media (prefers-color-scheme: dark) { .korak .oznaka { color: var(--tekst2); } }
@@ -793,14 +794,41 @@
   }
   $('nazad').addEventListener('click', () => idiNa(korak - 1));
   $('dalje').addEventListener('click', () => (korak === brojKoraka - 1 ? prijava() : idiNa(korak + 1)));
-  let pocetakX = null;
-  $('koraci').addEventListener('touchstart', (e) => { pocetakX = e.touches[0].clientX; }, { passive: true });
-  $('koraci').addEventListener('touchend', (e) => {
-    if (pocetakX == null) return;
-    const dx = e.changedTouches[0].clientX - pocetakX;
-    if (Math.abs(dx) > 40) idiNa(korak + (dx < 0 ? 1 : -1));
-    pocetakX = null;
-  });
+  // Prevlačenje: traka prati prst, a na pustanje se lepi na najbliži korak (ili sledeći, ako je prevlačenje bilo brzo).
+  // Na prvom i poslednjem koraku traka se rasteže uz otpor. Uspravno pomeranje se ne dira.
+  let vuce = null;
+  const vrpca = $('vrpca');
+  $('koraci').addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    vuce = { x: t.clientX, y: t.clientY, dx: 0, smer: null, tragovi: [[t.clientX, e.timeStamp]], sirina: $('koraci').clientWidth || 1 };
+  }, { passive: true });
+  $('koraci').addEventListener('touchmove', (e) => {
+    if (!vuce) return;
+    const t = e.touches[0], dx = t.clientX - vuce.x, dy = t.clientY - vuce.y;
+    if (!vuce.smer && Math.hypot(dx, dy) > 8) vuce.smer = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (vuce.smer !== 'x') return;
+    if (e.cancelable) e.preventDefault();
+    const ivica = (korak === 0 && dx > 0) || (korak === brojKoraka - 1 && dx < 0);
+    vuce.dx = ivica ? dx / (1 + Math.abs(dx) / (vuce.sirina * 0.25)) : dx;
+    vuce.tragovi.push([t.clientX, e.timeStamp]);
+    if (vuce.tragovi.length > 5) vuce.tragovi.shift();
+    vrpca.classList.add('vuce');
+    vrpca.style.transform = 'translateX(calc(' + (-100 * korak) + '% + ' + vuce.dx + 'px))';
+  }, { passive: false });
+  function pusti(e) {
+    if (!vuce) return;
+    const v = vuce; vuce = null;
+    vrpca.classList.remove('vuce');
+    if (v.smer !== 'x') return;
+    const [x0, t0] = v.tragovi[0], [x1, t1] = v.tragovi[v.tragovi.length - 1];
+    const brzina = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0;  // px/ms
+    let n = korak;
+    if (Math.abs(brzina) > 0.35) n = korak + (brzina < 0 ? 1 : -1);
+    else if (Math.abs(v.dx) > v.sirina * 0.35) n = korak + (v.dx < 0 ? 1 : -1);
+    idiNa(n);
+  }
+  $('koraci').addEventListener('touchend', pusti);
+  $('koraci').addEventListener('touchcancel', pusti);
   idiNa(0);
 
   // ---------- Prozor: potvrda i greške ----------
