@@ -2,7 +2,7 @@
 <html lang="sr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f8b6ba" media="(prefers-color-scheme: light)">
@@ -71,6 +71,8 @@
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Bez zumiranja: dupli dodir (Dalje više puta) i štipanje ne uvećavaju stranicu, kao u aplikaciji */
+  html, body, button, .dugme, label { touch-action: manipulation; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
     background: var(--pozadina); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
   h1, h2, h3, .naslov, .ime { font-family: var(--naslovni); }
@@ -429,6 +431,9 @@
   const ime = (g) => esc(g.ime + ' ' + g.prezime);
   const cuvaj = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
   const citaj = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+
+  // iPhone ne poštuje maximum-scale za štipanje, pa se štipanje ovde zaustavlja.
+  ['gesturestart', 'gesturechange'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 
