@@ -676,10 +676,7 @@
     return new Promise((da, ne) => {
       if (!napraviKlijenta()) return ne(greska('ucitava'));
       cekaju.push([da, ne]);
-      // bez ranije odobrenih dozvola: nalog koji je koristio staru verziju (tabele) inače dobija i nju, pa i upozorenje;
-      // ako ova verzija Google biblioteke to ne prima, prijava ide kao ranije
-      try { klijent.requestAccessToken({ prompt, hint: mejl || undefined, include_granted_scopes: false }); }
-      catch (e) { klijent.requestAccessToken({ prompt, hint: mejl || undefined }); }
+      klijent.requestAccessToken({ prompt, hint: mejl || undefined });
     });
   }
   async function tokenSad() {
