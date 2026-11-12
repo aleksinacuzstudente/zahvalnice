@@ -1,6 +1,6 @@
 // Service worker za PWA: stranica se uvek uzima sa mreže (da skeneri imaju najnoviju verziju), keš je samo
 // rezerva kad mreža zakaže. Google prijava i tabela (accounts.google.com, googleapis.com) se ne diraju.
-const KES = 'zahvalnice-nova-v2';
+const KES = 'zahvalnice-nova-v3';
 const OSNOVA = ['./', './index.html', './manifest.webmanifest', './ikona-192.png', './ikona-512.png',
   'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'];
 
