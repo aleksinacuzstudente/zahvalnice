@@ -657,8 +657,7 @@
   function napraviKlijenta() {
     if (klijent || !window.google || !google.accounts) return klijent;
     klijent = google.accounts.oauth2.initTokenClient({
-      // bez ranije odobrenih dozvola: nalog koji je koristio staru verziju (tabele) inače dobija i nju, pa i upozorenje
-      client_id: CLIENT_ID, scope: DOZVOLE.join(' '), include_granted_scopes: false,
+      client_id: CLIENT_ID, scope: DOZVOLE.join(' '),
       callback: (odg) => {
         const c = cekaju; cekaju = [];
         if (odg.error) return c.forEach(([, ne]) => ne(greska(odg.error === 'access_denied' ? 'odbijeno' : 'neuspelo', odg.error)));
@@ -677,7 +676,10 @@
     return new Promise((da, ne) => {
       if (!napraviKlijenta()) return ne(greska('ucitava'));
       cekaju.push([da, ne]);
-      klijent.requestAccessToken({ prompt, hint: mejl || undefined });
+      // bez ranije odobrenih dozvola: nalog koji je koristio staru verziju (tabele) inače dobija i nju, pa i upozorenje;
+      // ako ova verzija Google biblioteke to ne prima, prijava ide kao ranije
+      try { klijent.requestAccessToken({ prompt, hint: mejl || undefined, include_granted_scopes: false }); }
+      catch (e) { klijent.requestAccessToken({ prompt, hint: mejl || undefined }); }
     });
   }
   async function tokenSad() {
