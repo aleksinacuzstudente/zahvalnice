@@ -657,7 +657,8 @@
   function napraviKlijenta() {
     if (klijent || !window.google || !google.accounts) return klijent;
     klijent = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID, scope: DOZVOLE.join(' '),
+      // bez ranije odobrenih dozvola: nalog koji je koristio staru verziju (tabele) inače dobija i nju, pa i upozorenje
+      client_id: CLIENT_ID, scope: DOZVOLE.join(' '), include_granted_scopes: false,
       callback: (odg) => {
         const c = cekaju; cekaju = [];
         if (odg.error) return c.forEach(([, ne]) => ne(greska(odg.error === 'access_denied' ? 'odbijeno' : 'neuspelo', odg.error)));
