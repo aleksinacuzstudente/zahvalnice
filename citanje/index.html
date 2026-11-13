@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#7d133a" media="(prefers-color-scheme: dark)">
 <title>Dodela zahvalnica – čitanje</title>
 <!--
-  Čitanje na bini: dve kartice, „Na binu“ (gore, izlazak koji se penje i prima zahvalnice) i „Neka se spreme“ (dole,
+  Čitanje na bini: dve kartice, „Na bini“ (gore, izlazak koji se penje i prima zahvalnice) i „Neka se spreme“ (dole,
   sledeći izlazak), i jedno dugme. Izlaske pravi server (scripts/zahvalnice/server/Bina.js) od gostiju koji su stigli i primaju
   zahvalnicu; stanje je na serveru, pa svi telefoni vide isto. Prijava je ista kao u skeneru (nova/).
   Radnja se prikaže odmah (predviđanje), a šalje se redom u pozadini; kad server odbije, ekran se vrati na njegovo stanje.
@@ -130,13 +130,14 @@
   .podesavanja { display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; margin-left: -9px; border-radius: 999px;
     background: var(--povrs); border: 1.5px solid var(--linija); color: var(--tekst2); font-size: 14px; font-weight: 600; white-space: nowrap; }
   .podesavanja svg { width: 18px; height: 18px; flex: none; }
-  .polje { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
-  .polje-naziv { font-weight: 700; }
-  .polje-opis { font-size: 14px; color: var(--tekst2); line-height: 1.4; }
-  .stepper { display: flex; align-items: center; gap: 18px; }
-  .stepper button { width: 52px; height: 52px; border-radius: 50%; background: var(--povrs); border: 1.5px solid var(--linija); font-size: 26px; font-weight: 700; }
+  /* Polje podešavanja: naziv levo, broj sa − i + desno, opis ispod; sve poravnato uz levu ivicu kao naslov */
+  .polje { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 14px; padding: 4px 0 6px; }
+  .polje-naziv { font-weight: 700; line-height: 1.3; }
+  .polje-opis { grid-column: 1 / -1; font-size: 14px; color: var(--tekst2); line-height: 1.4; }
+  .stepper { display: flex; align-items: center; gap: 10px; }
+  .stepper button { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); border: 1.5px solid var(--linija); font-size: 26px; font-weight: 700; }
   .stepper button:disabled { opacity: .35; }
-  .stepper b { font-family: var(--naslovni); font-size: 34px; min-width: 2ch; text-align: center; }
+  .stepper b { font-family: var(--naslovni); font-size: 28px; min-width: 2ch; text-align: center; }
 
   .prijava { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }
   .prijava h1 { margin: 0; font-size: 28px; }
@@ -320,7 +321,7 @@
     + '<svg><use href="#i-' + (uvecana === k ? 'umanji' : 'uvecaj') + '"/></svg></button>';
   function htmlGore(b) {
     const g = b.gore;
-    const oznaka = '<div class="oznaka"><span>Na binu</span>' + (g && g !== CEKA ? '<span class="koliko">izlazak ' + g.redni + ' · ' + g.ljudi + ' ljudi</span>' : '') + dugmeUvecaj('gore') + '</div>';
+    const oznaka = '<div class="oznaka"><span>Na bini</span>' + (g && g !== CEKA ? '<span class="koliko">izlazak ' + g.redni + ' · ' + g.ljudi + ' ljudi</span>' : '') + dugmeUvecaj('gore') + '</div>';
     if (g === CEKA) return oznaka + ucitava('Vraćam prethodni izlazak…');
     if (!g) return oznaka + prazno(!b.pocelo ? 'Kada pritisnete <b>Počni</b>, prvi izlazak se poziva da se spremi, a sledeće <b>Dalje</b> ga izvodi na binu.'
       : b.dole ? '<span class="glavni">Niko nije na bini.</span>Pročitajte izlazak dole da se spremi, pa <b>Dalje</b> ga izvodi na binu.'
