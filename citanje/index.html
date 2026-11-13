@@ -135,6 +135,8 @@
   .prijava p { margin: 0; color: var(--tekst2); line-height: 1.45; max-width: 34ch; }
   .prijava .dugme { flex: none; padding: 14px 28px; font-size: 18px; }
   .prijava .poruka { font-size: 15px; color: var(--lose); min-height: 20px; }
+  .ucitava { display: flex; align-items: center; gap: 10px; color: var(--tekst2); font-weight: 700; font-size: 17px; }
+  .ucitava .vrti { width: 20px; height: 20px; border-width: 2.5px; }
   .prozor { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; animation: pojava .15s both; }
   .prozor-kartica { background: var(--povrs); border-radius: 20px; padding: 20px; max-width: 420px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
   .prozor-kartica h2 { margin: 0; font-size: 22px; }
@@ -149,7 +151,8 @@
   <symbol id="i-uvecaj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></symbol>
   <symbol id="i-umanji" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4 0l0 -4"/><path d="M3 3l6 6"/><path d="M5 15l4 0l0 4"/><path d="M3 21l6 -6"/><path d="M19 9l-4 0l0 -4"/><path d="M15 9l6 -6"/><path d="M19 15l-4 0l0 4"/><path d="M15 15l6 6"/></symbol>
 </svg>
-<div class="ekran" id="ekran-prijava">
+<div class="ekran skriveno" id="ekran-ucitava"><div class="prijava"><div class="ucitava"><span class="vrti"></span>Učitavam ture…</div></div></div>
+<div class="ekran skriveno" id="ekran-prijava">
   <div class="prijava">
     <h1>Čitanje na bini</h1>
     <p>Prijavite se Google nalogom kojim skenirate goste, istim kao u aplikaciji za ulaz.</p>
@@ -433,29 +436,28 @@
     }
   }
 
+  // Jedan ekran u svakom trenutku: učitavanje (bez dugmadi), prijava ili rad
+  function ekran(ime) { ['ucitava', 'prijava', 'rad'].forEach((x) => $('ekran-' + x).classList.toggle('skriveno', x !== ime)); }
   function prikaziPrijavu(t) {
     clearInterval(pratim);
-    $('ekran-rad').classList.add('skriveno');
-    $('ekran-prijava').classList.remove('skriveno');
+    ekran('prijava');
     $('prijava-poruka').textContent = t || '';
   }
   async function pocni() {
-    $('prijavi').textContent = 'Učitavam…';
+    ekran('ucitava');
     try {
       const o = await server('bina');
       srv = vidi = o.bina; verzija = o.verzija;
-      $('ekran-prijava').classList.add('skriveno');
-      $('ekran-rad').classList.remove('skriveno');
+      ekran('rad');
       crtaj('promena');
       clearInterval(pratim);
       pratim = setInterval(prati, 2000);
     } catch (e) { prikaziPrijavu(e.message); }
-    $('prijavi').textContent = 'Prijavite se';
   }
   $('prijavi').addEventListener('click', () => traziToken().then(pocni).catch((e) => ($('prijava-poruka').textContent = e.message)));
   $('odjava').addEventListener('click', () => prozor('Odjaviti se?', 'Prijava se briše sa ovog telefona (i u aplikaciji za ulaz, ista je).',
     [{ tekst: 'Odjavi se', glavno: true, akcija: () => { token = null; tokenDo = 0; cuvaj('nova-token', { mejl }); prikaziPrijavu(''); } }, { tekst: 'Otkaži' }]));
-  if (token) pocni();
+  if (token) pocni(); else ekran('prijava');
 </script>
 </body>
 </html>
