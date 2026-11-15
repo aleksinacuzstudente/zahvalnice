@@ -424,9 +424,11 @@
   .legenda span { display: inline-flex; align-items: center; gap: 5px; }
   .legenda svg { width: 14px; height: 14px; }
   /* Kartica izabrane osobe ispod mape */
-  .sala-kartica { position: relative; flex: 0 1 auto; max-height: 46%; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
-    background: var(--povrs); border-radius: 16px; padding: 14px 16px 16px; animation: gore .3s var(--glatko) both; }
-  .sala-kartica .zatvori { position: absolute; right: 10px; top: 10px; width: 38px; height: 38px; border-radius: 50%; background: var(--pozadina); display: grid; place-items: center; }
+  .sala.ima-karticu .mapa { flex: 0 0 calc(40% - 6px); }  /* štab: kartica 60 %, mapa 40 % */
+  .sala-kartica { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--povrs); border-radius: 16px; animation: gore .3s var(--glatko) both; }
+  .k-telo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px 16px 16px; }
+  .sala-kartica .zatvori { position: absolute; z-index: 1; right: 10px; top: 10px; width: 38px; height: 38px; border-radius: 50%; background: var(--pozadina); display: grid; place-items: center; }
   .sala-kartica .zatvori svg { width: 18px; height: 18px; }
   .k-ime { font: 800 22px/1.15 var(--naslovni); padding-right: 46px; }
   .k-sta { margin-top: 4px; font-size: 14px; color: var(--tekst2); }
@@ -1220,13 +1222,19 @@
     if (u) { osoba.gosti.splice(Number(u.dataset.ukloniGosta), 1); return crtajOsobu(); }
     if (e.target.closest('#osoba-akcija')) posaljiDolazak();
   });
-  async function posaljiDolazak() {
+  async function posaljiDolazak(potvrdjeno) {
     const a = akcijaOsobe();
     if (!a.moze || osoba.radi) return;
     if (!osoba.g && !osoba.novo.trim()) {
       osoba.greska = 'Upišite ime i prezime osobe.'; crtajOsobu();
       const p = $('osoba-novo'); if (p) p.focus();
       return;
+    }
+    if (!potvrdjeno) {  // štab 15.11.2026: svaka izmena traži potvrdu
+      const imena = [osoba.g ? ime(osoba.g) : esc(osoba.novo.trim())].concat(osoba.gosti.map((x) => esc(x.trim() || 'gost bez imena')));
+      document.activeElement && document.activeElement.blur();
+      return prozor({ ikona: 'i-nova-osoba', naslov: imena.length > 1 ? 'Upisati ' + imena.length + (imena.length < 5 ? ' osobe' : ' osoba') + ' i dodeliti mesta?' : 'Upisati i dodeliti mesto?',
+        tekst: imena.join('<br>'), dugmad: [{ tekst: a.tekst, vrsta: 'glavno', akcija: () => posaljiDolazak(true) }, { tekst: 'Otkaži' }] });
     }
     osoba.radi = true; osoba.greska = '';
     const d = $('osoba-akcija');
@@ -1365,11 +1373,20 @@
 
   // Zum i pomeranje: jedan prst pomera, dva zumiraju, točkić/dugmad zumiraju; dodir bez pomeranja bira mesto
   const pogled = { s: 1, x: 0, y: 0 };
+  // Vidljivi deo mape u jedinicama crteža (mapa je uz vrh i po sredini, xMidYMin meet)
+  function vidljivo() {
+    const r = $('mapa-svg').getBoundingClientRect(), H = geometrija ? geometrija.H : 1000;
+    if (!r.width || !r.height) return { x0: 0, x1: W, h: H };
+    const u = jedinica(), sir = r.width * u;
+    return { x0: -(sir - W) / 2, x1: W + (sir - W) / 2, h: r.height * u };
+  }
   function primeniPogled() {
-    const H = geometrija ? geometrija.H : 1000;
+    const H = geometrija ? geometrija.H : 1000, v = vidljivo();
     pogled.s = Math.min(6, Math.max(1, pogled.s));
-    const max = (v, ceo) => Math.max(-(ceo * pogled.s - ceo), Math.min(0, v));
-    pogled.x = max(pogled.x, W); pogled.y = max(pogled.y, H);
+    // crtež veći od vidljivog dela: pomera se samo dok ivica ne dođe do ivice; manji: po sredini (vodoravno) i uz vrh
+    const sir = W * pogled.s, vis = H * pogled.s;
+    pogled.x = sir >= v.x1 - v.x0 ? Math.min(v.x0, Math.max(v.x1 - sir, pogled.x)) : (v.x0 + v.x1) / 2 - sir / 2;
+    pogled.y = vis >= v.h ? Math.min(0, Math.max(v.h - vis, pogled.y)) : 0;
     $('mapa-g').setAttribute('transform', 'translate(' + pogled.x + ' ' + pogled.y + ') scale(' + pogled.s + ')');
   }
   function jedinica() { const r = $('mapa-svg').getBoundingClientRect(); const vb = $('mapa-svg').viewBox.baseVal; return Math.max(vb.width / r.width, vb.height / r.height); }
@@ -1427,10 +1444,11 @@
   function pokaziRed(deo, red, mesto) {
     const y = geometrija && geometrija.redoviY[deo + '|' + red];
     if (y === undefined) return;
-    const r = sala.find((x) => x.deo === deo && x.red === red);
-    const sx = r && mesto ? W / 2 - (r.mesta - 1) * K / 2 + (Number(mesto) - 1) * K : W / 2;
-    const vis = Math.min(geometrija.H, $('mapa-svg').getBoundingClientRect().height * jedinica());  // vidljiva visina, u jedinicama crteža
-    pogled.s = 2; pogled.x = -(sx * pogled.s - W / 2); pogled.y = -(y * pogled.s - vis / 2);
+    // ceo red (sa oznakom reda) u širini mape, red na sredini; mesto je u redu, pa se vidi
+    const r = sala.find((x) => x.deo === deo && x.red === red), v = vidljivo();
+    const sirReda = (r ? (r.mesta - 1) * K : 600) + 2 * R + 110;
+    pogled.s = Math.max(1, Math.min(4, (v.x1 - v.x0) / sirReda));
+    pogled.x = (v.x0 + v.x1) / 2 - (W / 2) * pogled.s; pogled.y = v.h / 2 - y * pogled.s;
     primeniPogled();
   }
 
@@ -1440,16 +1458,24 @@
     if (g) return izaberi(g, false);
     poruka((rezervisano.has(m) ? 'Rezervisano: ' : 'Slobodno: ') + opisMesta(m));
   }
+  // Otvaranje kartice uvek pokaže red osobe; sa otvorenom karticom dodir na drugo mesto samo menja karticu (mapa stoji),
+  // a pretraga pokaže red nove osobe. ✕ vraća mapu kakva je bila pre kartice.
+  let pogledPre = null;
   function izaberi(g, zum) {
+    const otvorena = !$('sala-kartica').classList.contains('skriveno');
+    if (!otvorena) pogledPre = { s: pogled.s, x: pogled.x, y: pogled.y };
     izabran = g.broj;
     $('sala-kartica').classList.remove('skriveno');
+    $('sala').classList.add('ima-karticu');
     crtajSalu();
-    if (zum && g.mesto) requestAnimationFrame(() => pokaziRed(g.deo, g.redSale, g.mesto));
+    if ((!otvorena || zum) && g.mesto) requestAnimationFrame(() => pokaziRed(g.deo, g.redSale, g.mesto));
   }
   function zatvoriKarticu() {
     izabran = null;
     $('sala-kartica').classList.add('skriveno');
-    pogled.s = 1; pogled.x = 0; pogled.y = 0;
+    $('sala').classList.remove('ima-karticu');
+    Object.assign(pogled, pogledPre || { s: 1, x: 0, y: 0 });
+    pogledPre = null;
     crtajSalu();
   }
 
@@ -1473,13 +1499,21 @@
     const dno = g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span>'
       : '<span class="k-stanje">nije stigao</span><button class="dugme glavno" id="k-upisi"' + (upisujeKartica ? ' disabled' : '') + '>'
         + (upisujeKartica ? '<span class="vrti"></span>Upisujem…' : g.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto') + '</button>';
-    el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button>'
-      + '<div class="k-ime">' + (d && /^\(.*\)$/.test(g.prezime) ? esc(g.ime) : ime(g)) + '</div><div class="k-sta">' + sta + '</div><div class="k-mesto">' + mesto + '</div><div class="k-dno">' + dno + '</div>';
+    el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
+      + '<div class="k-ime">' + (d && /^\(.*\)$/.test(g.prezime) ? esc(g.ime) : ime(g)) + '</div><div class="k-sta">' + sta + '</div><div class="k-mesto">' + mesto + '</div><div class="k-dno">' + dno + '</div></div>';
   }
   $('sala-kartica').addEventListener('click', async (e) => {
     if (e.target.closest('#zatvori-karticu')) return zatvoriKarticu();
     if (!e.target.closest('#k-upisi') || upisujeKartica || !izabran) return;
-    const broj = izabran, bezMesta = !(gosti.find((x) => x.broj === broj) || {}).mesto;
+    // štab 15.11.2026: svaka izmena traži potvrdu
+    const broj = izabran, g0 = gosti.find((x) => x.broj === broj) || {};
+    prozor({ ikona: 'i-korisnik', naslov: 'Upisati dolazak?', tekst: '<span class="ime-gosta">' + ime(g0) + '</span><br>'
+      + (g0.mesto ? esc(g0.deo + ' · red ' + g0.redSale + ' · mesto ' + g0.mesto) : 'Dobiće slobodno mesto.'),
+      dugmad: [{ tekst: g0.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto', vrsta: 'glavno', akcija: () => upisiIzKartice(broj) }, { tekst: 'Otkaži' }] });
+  });
+  async function upisiIzKartice(broj) {
+    if (upisujeKartica) return;
+    const bezMesta = !(gosti.find((x) => x.broj === broj) || {}).mesto;
     upisujeKartica = true; crtajKarticu();
     let r;
     if (bezMesta) {  // osoba bez mesta: server upisuje dolazak i daje slobodno mesto (kao Dodaj)
@@ -1498,7 +1532,7 @@
     else if (r.status === 'vec') poruka('Već je ušao' + (r.gost && r.gost.vreme ? ' u ' + r.gost.vreme : ''));
     else { ton(false); poruka(r.status === 'istekla' ? 'Prijava je istekla, prijavite se ponovo' : r.status === 'pristup' ? 'Nalog nema pravo na tabelu' : 'Nije upisano: ' + (r.poruka || 'pokušajte ponovo')); }
     crtajSalu();
-  });
+  }
 
   // Otvaranje i zatvaranje sale; osvežavanje dok je otvorena
   let tajmerSale = null, salaPita = false;
