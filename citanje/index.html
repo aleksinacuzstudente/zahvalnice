@@ -62,7 +62,7 @@
   @media (prefers-color-scheme: dark) { #status.pazi { color: #ffd0a8; } }
   .vrti { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: vrti .7s linear infinite; }
   @keyframes vrti { to { transform: rotate(360deg); } }
-  /* Nalog i odjava: isto kao u skeneru (nova/index.html, .nalogred) */
+  /* Nalog i odjava: isto kao u skeneru (ulaz/index.html, .nalogred) */
   .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
   .nalogred .mejl { min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
@@ -71,7 +71,6 @@
   .kartica { background: var(--povrs); border-radius: 18px; box-shadow: var(--senka); padding: 14px 16px; display: flex; flex-direction: column;
     min-height: 0; min-width: 0; overflow: hidden; }
   #gore, #dole { flex: 1 1 0; }
-  #dole { cursor: pointer; }
   /* Uvećana kartica: druga se sklanja, slova su veća; dugmad dole ostaju */
   .uvecaj { flex: none; width: 36px; height: 36px; margin: -6px -6px 0 0; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     background: transparent; color: var(--tekst2); }
@@ -86,6 +85,7 @@
   .sadrzaj { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; overflow-wrap: anywhere; }
   .oznaka { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-family: var(--naslovni); font-weight: 700;
     font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--tekst2); margin-bottom: 6px; flex: none; }
+  .oznaka .koliko b { font-size: 1.25em; color: var(--tekst); }
   .oznaka .koliko { flex: 1; text-align: right; white-space: nowrap; letter-spacing: 0; text-transform: none; font-family: var(--telo); font-weight: 600; }
   .grupa { padding: 6px 0; border-top: 1px solid var(--linija); }
   .grupa:first-child { border-top: 0; }
@@ -175,7 +175,7 @@
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
   <div class="vrh"><button class="podesavanja" id="podesavanja" aria-label="Podešavanja"><svg><use href="#i-podesi"/></svg><span id="izlazak-od"></span></button><span id="status" role="status" aria-live="polite"></span></div>
   <section class="kartica" id="gore"></section>
-  <section class="kartica" id="dole" aria-label="Sledeći izlazak, dodir pokazuje imena"></section>
+  <section class="kartica" id="dole" aria-label="Sledeći izlazak"></section>
   <div class="dugmad">
     <button class="dugme nazad" id="nazad" aria-label="Vrati jedan korak">‹</button>
     <button class="dugme glavno" id="glavno"></button>
@@ -234,16 +234,16 @@
 
   // ---------- Stanje ----------
   // srv: poslednje stanje sa servera; vidi: ono što je na ekranu (srv + radnje koje čekaju); red: radnje koje čekaju server.
-  let srv = null, vidi = null, verzija = 0, doleImena = false, uvecana = '';  // uvecana: '', 'gore' ili 'dole'
+  let srv = null, vidi = null, verzija = 0, uvecana = '';  // uvecana: '', 'gore' ili 'dole'
   const red = [];
   const CEKA = 'ceka';  // izlazak koji server tek šalje (posle Dalje / Nazad)
 
   // Šta radnja menja na ekranu odmah; null = radnja sad nema smisla (ne šalje se)
   const PREDVIDI = {
     'bina-pocni': (b) => (b.dole ? Object.assign({}, b, { pocelo: true }) : null),
-    'bina-dalje': (b) => Object.assign({}, b, { p: b.p + 1, gore: b.dole, dole: b.dole ? CEKA : null, primili: false }),
+    'bina-dalje': (b) => Object.assign({}, b, { p: b.p + 1, gore: b.dole, dole: b.dole ? CEKA : null, primili: !!b.primiliDole, primiliDole: false }),
     'bina-nazad': (b) => (b.p === 0 ? Object.assign({}, b, { pocelo: false })
-      : Object.assign({}, b, { p: b.p - 1, dole: b.gore, gore: b.p >= 2 ? CEKA : null, primili: true })),
+      : Object.assign({}, b, { p: b.p - 1, dole: b.gore, gore: b.p >= 2 ? CEKA : null, primili: true, primiliDole: b.primili })),
     'bina-primili': (b, v) => Object.assign({}, b, { primili: v }),
     'bina-n': (b, v) => Object.assign({}, b, { n: v }),
   };
@@ -308,6 +308,9 @@
 
   // ---------- Crtanje ----------
   const naziv = (g) => g || 'Kontrolori bez BM';
+  // 1 osoba, 2–4 osobe (osim 12–14), ostalo osoba
+  const osoba = (n) => n + ' ' + (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'osobe' : 'osoba');
+  const koliko = (t) => '<span class="koliko">izlazak ' + t.redni + ' · <b>' + osoba(t.ljudi) + '</b></span>';
   const izlazaka = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'izlazak' : 'izlazaka');
   const mesto = (g) => { const m = /^BM (\d+)/.exec(g); return m ? OBJEKAT[Number(m[1])] || '' : ''; };
   const ucitava = (t) => '<div class="prazno"><span class="vrti"></span><span>' + t + '</span></div>';
@@ -321,7 +324,7 @@
     + '<svg><use href="#i-' + (uvecana === k ? 'umanji' : 'uvecaj') + '"/></svg></button>';
   function htmlGore(b) {
     const g = b.gore;
-    const oznaka = '<div class="oznaka"><span>Na bini</span>' + (g && g !== CEKA ? '<span class="koliko">izlazak ' + g.redni + ' · ' + g.ljudi + ' ljudi</span>' : '') + dugmeUvecaj('gore') + '</div>';
+    const oznaka = '<div class="oznaka"><span>Na bini</span>' + (g && g !== CEKA ? koliko(g) : '') + dugmeUvecaj('gore') + '</div>';
     if (g === CEKA) return oznaka + ucitava('Vraćam prethodni izlazak…');
     if (!g) return oznaka + prazno(!b.pocelo ? 'Kada pritisnete <b>Počni</b>, prvi izlazak se poziva da se spremi, a sledeće <b>Dalje</b> ga izvodi na binu.'
       : b.dole ? '<span class="glavni">Niko nije na bini.</span>Pročitajte izlazak dole da se spremi, pa <b>Dalje</b> ga izvodi na binu.'
@@ -330,14 +333,13 @@
   }
   function htmlDole(b) {
     const d = b.dole;
-    const imena = doleImena || uvecana === 'dole';
     const oznaka = '<div class="oznaka"><span>' + (b.pocelo ? 'Neka se spreme' : 'Prvi izlazak') + '</span>'
-      + (d && d !== CEKA ? '<span class="koliko">izlazak ' + d.redni + ' · ' + d.ljudi + ' ljudi' + (uvecana === 'dole' ? '' : ' ' + (doleImena ? '▴' : '▾')) + '</span>' : '')
+      + (d && d !== CEKA ? koliko(d) : '')
       + dugmeUvecaj('dole') + '</div>';
     if (d === CEKA) return oznaka + ucitava('Pravim sledeći izlazak…');
     if (!d) return oznaka + prazno(b.pocelo ? (b.gore ? 'Gore je poslednji izlazak. Ko zakasni, pojaviće se ovde.' : 'Nema više nikoga ko je stigao, a nije prozvan.')
       : '<span class="glavni">Još niko nije stigao ko prima zahvalnicu.</span>Izlasci se prave od gostiju skeniranih na ulazu i pojaviće se ovde čim neko stigne.');
-    return oznaka + izlazak(d, imena);
+    return oznaka + izlazak(d, true);
   }
   // Kartica se menja samo kad joj se promeni sadržaj (ne gubi skrol), uz animaciju radnje ili pretapanje
   function postavi(el, html, anim) {
@@ -354,7 +356,7 @@
     $('ekran-rad').classList.toggle('uvecano', !!uvecana);
     $('gore').classList.toggle('uvecana', uvecana === 'gore');
     $('dole').classList.toggle('uvecana', uvecana === 'dole');
-    $('izlazak-od').innerHTML = (!b.pocelo ? '<b>' + b.ukupno + '</b> ' + izlazaka(b.ukupno) + ' · ' + b.preostalo + ' ljudi'
+    $('izlazak-od').innerHTML = (!b.pocelo ? '<b>' + b.ukupno + '</b> ' + izlazaka(b.ukupno) + ' · ' + osoba(b.preostalo)
       : b.p === 0 ? 'Sprema se izlazak <b>1</b> od ' + b.ukupno : 'Na bini izlazak <b>' + b.p + '</b> od ' + b.ukupno) + ' · do ' + b.n;
     postavi($('gore'), htmlGore(b), anim);
     postavi($('dole'), htmlDole(b), anim);
@@ -386,7 +388,6 @@
   document.addEventListener('click', (e) => {
     const u = e.target.closest('[data-uvecaj]');
     if (u) { uvecana = uvecana === u.dataset.uvecaj ? '' : u.dataset.uvecaj; return crtaj(); }
-    if (e.target.closest('#dole') && uvecana !== 'dole') { doleImena = !doleImena; crtaj(); }
   });
   $('nazad').addEventListener('click', () => {
     const b = vidi;

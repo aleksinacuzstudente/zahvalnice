@@ -268,10 +268,9 @@
   .osoba .stanje.bez { border: 2px dashed var(--linija); background: none; }
   .osoba h3 { margin: 22px 0 8px; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--tekst2); }
   .osoba .red-gosta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; animation: pojava .18s ease-out both; }
-  .osoba .red-gosta input { padding-left: 16px; }
   .osoba .red-gosta button { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--povrs); display: grid; place-items: center; color: var(--tekst2); }
   .osoba .red-gosta button svg { width: 20px; height: 20px; }
-  .osoba .dodaj-gosta { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 16px; border-radius: 14px; border: 2px dashed var(--linija); color: var(--tekst); font-weight: 700; font-size: 16px; width: 100%; justify-content: center; }
+  .osoba .dodaj-gosta { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 16px; border-radius: 14px; border: 2px dashed var(--tekst2); background: var(--povrs2); color: var(--tekst); font-weight: 700; font-size: 16px; width: 100%; justify-content: center; }
   .osoba .dodaj-gosta svg { width: 20px; height: 20px; }
   .osoba .uputstvo { font-size: 13px; color: var(--tekst2); margin: 4px 2px 0; }
   .osoba .greska-poruka { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--lose); color: #fff; font-weight: 700; animation: pojava .18s ease-out both; }
@@ -473,6 +472,7 @@
   <symbol id="i-korisnik" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
   <symbol id="i-sala" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11a2 2 0 0 1 2 2v2h10v-2a2 2 0 1 1 4 0v4a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-4a2 2 0 0 1 2 -2z"/><path d="M5 11v-5a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v5"/><path d="M6 19v1"/><path d="M18 19v1"/></symbol>
   <symbol id="i-desno" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></symbol>
+  <symbol id="i-nova-osoba" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M16 19h6"/><path d="M19 16v6"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4"/></symbol>
   <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
   <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
 </svg>
@@ -1191,7 +1191,7 @@
   }
   function akcijaOsobe() {
     const g = osoba.g, n = osoba.gosti.length;
-    if (!g) return { tekst: n ? 'Dodeli mesta (' + (n + 1) + ')' : 'Dodeli mesto', moze: !!osoba.novo.trim() };
+    if (!g) return { tekst: n ? 'Dodeli mesta (' + (n + 1) + ')' : 'Dodeli mesto', moze: true };  // bez imena dugme ne siví, nego traži ime
     if (g.stigao && g.mesto) return n ? { tekst: 'Smesti ' + (n === 1 ? 'gosta' : 'goste (' + n + ')'), moze: true } : { tekst: 'Već je ušao', moze: false };
     if (!g.mesto) return { tekst: n ? 'Dodeli mesta (' + (n + 1) + ')' : 'Dodeli mesto', moze: true };
     return { tekst: n ? 'Upiši i smesti ' + (n === 1 ? 'gosta' : 'goste (' + n + ')') : 'Upiši dolazak', moze: true };
@@ -1207,10 +1207,10 @@
       html += g.mesto ? '<div class="stanje">' + punoMesto(g) + '<br>' + ulazOpis(g.ulaz) + (g.stigao ? '<br>ušao u ' + esc(g.vreme) : '') + '</div>'
         : '<div class="stanje bez">Nema mesto. Dobiće ga sada' + (g.grupa ? ', uz grupu ' + esc(g.grupa) : '') + '.</div>';
     } else {
-      html += '<div class="polje"><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
+      html += '<div class="polje"><svg><use href="#i-nova-osoba"/></svg><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
         + '<p class="uputstvo">Osoba koje nema na spisku. Dobiće mesto sa svojim gostima.</p>';
     }
-    html += '<h3>Gosti</h3>' + osoba.gosti.map((x, i) => '<div class="red-gosta"><div class="polje" style="flex:1"><input data-gost="' + i
+    html += '<h3>Gosti</h3>' + osoba.gosti.map((x, i) => '<div class="red-gosta"><div class="polje" style="flex:1"><svg><use href="#i-korisnik"/></svg><input data-gost="' + i
       + '" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Ime i prezime" aria-label="Gost ' + (i + 1) + '" value="' + esc(x) + '"></div>'
       + '<button data-ukloni-gosta="' + i + '" aria-label="Ukloni gosta"><svg><use href="#i-zatvori"/></svg></button></div>').join('')
       + '<button class="dodaj-gosta" id="dodaj-gosta"><svg><use href="#i-plus"/></svg>Dodaj gosta</button>'
@@ -1227,7 +1227,7 @@
   }
   $('osoba').addEventListener('input', (e) => {
     if (!osoba) return;
-    if (e.target.id === 'osoba-novo') { osoba.novo = e.target.value; osveziDugme(); }
+    if (e.target.id === 'osoba-novo') { osoba.novo = e.target.value; if (osoba.greska && osoba.novo.trim()) { osoba.greska = ''; const gp = $('osoba-telo').querySelector('.greska-poruka'); if (gp) gp.remove(); } osveziDugme(); }
     if (e.target.dataset.gost != null) osoba.gosti[Number(e.target.dataset.gost)] = e.target.value;
   });
   $('osoba').addEventListener('click', (e) => {
@@ -1251,6 +1251,11 @@
   async function posaljiDolazak() {
     const a = akcijaOsobe();
     if (!a.moze || osoba.radi) return;
+    if (!osoba.g && !osoba.novo.trim()) {
+      osoba.greska = 'Upišite ime i prezime osobe.'; crtajOsobu();
+      const p = $('osoba-novo'); if (p) p.focus();
+      return;
+    }
     osoba.radi = true; osoba.greska = '';
     const d = $('osoba-akcija');
     d.classList.add('radi'); d.innerHTML = '<span class="vrti"></span>' + (osoba.gosti.length || (osoba.g && !osoba.g.mesto) || !osoba.g ? 'Tražim mesta…' : 'Upisujem…');
