@@ -935,7 +935,7 @@
       html = ikona('i-pazi') + '<div class="naslov">NIJE UPISANO</div><div class="detalj">' + esc(r.poruka) + '</div>';
     }
     const bezMesta = r.status === 'ok' && !r.gost.mesto;
-    html += klasa === 'ok' && !bezMesta ? '<div class="vreme"></div>' : '<div class="dalje"><svg><use href="#i-dodir"/></svg>'
+    html += '<div class="dalje"><svg><use href="#i-dodir"/></svg>'
       + (r.status === 'istekla' ? 'Dodirnite za ponovnu prijavu' : bezMesta ? 'Dodirnite da dobije mesto' : 'Dodirnite bilo gde za nastavak') + '</div>';
     el.dataset.status = r.status;
     el.dataset.bezMesta = bezMesta ? r.gost.broj : '';
@@ -945,7 +945,7 @@
     rezultatOtvoren = true;
     ton(klasa === 'ok');
     clearTimeout(tajmerRezultata);
-    if (klasa === 'ok' && !bezMesta) tajmerRezultata = setTimeout(zatvoriRezultat, 2600);
+    // bez samozatvaranja: ekran ostaje dok ga vratar ne dodirne
   }
   function zatvoriRezultat() {
     clearTimeout(tajmerRezultata);
@@ -1148,8 +1148,7 @@
     const zatvori = { tekst: 'Zatvori' };
     if (r.status === 'ok') {
       ton(true);
-      prozor({ ikona: 'i-ok', klasa: 'ok', naslov: 'Upisan', tekst: '<span class="ime-gosta">' + ime(r.gost) + '</span><br>u ' + esc(r.gost.vreme), dugmad: [] });
-      setTimeout(zatvoriProzor, 1500);
+      prozor({ ikona: 'i-ok', klasa: 'ok', naslov: 'Upisan', tekst: '<span class="ime-gosta">' + ime(r.gost) + '</span><br>u ' + esc(r.gost.vreme), dugmad: [zatvori] });
     } else {
       ton(false);
       const p = {
