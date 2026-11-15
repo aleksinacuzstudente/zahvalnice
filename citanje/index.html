@@ -10,9 +10,10 @@
 <title>Dodela zahvalnica – čitanje</title>
 <!--
   Čitanje na bini: dve kartice, „Na bini“ (gore, izlazak koji se penje i prima zahvalnice) i „Neka se spreme“ (dole,
-  sledeći izlazak), i jedno dugme. Izlaske pravi server (scripts/zahvalnice/server/Bina.js) od gostiju koji su stigli i primaju
-  zahvalnicu; stanje je na serveru, pa svi telefoni vide isto. Prijava je ista kao u skeneru (nova/).
-  Radnja se prikaže odmah (predviđanje), a šalje se redom u pozadini; kad server odbije, ekran se vrati na njegovo stanje.
+  sledeći izlazak), i jedno dugme. Redosled i izlasci su zaključan spisak (list Uručivanje, scripts/zahvalnice/urucivanje.py;
+  isti je PDF za slaganje zahvalnica), učitan jednom. Ko nije stigao je precrtan i preskače se; ko stigne posle svog
+  izlaska je zakasneli i prozove se posle poslednjeg izlaska. Dalje i Nazad rade odmah u telefonu; serveru (Urucivanje.js)
+  se u pozadini šalje gde smo i ko je primio, pa ostali telefoni vide isto. Prijava je ista kao u skeneru (ulaz/).
   Animacija prati radnju (napred, nazad); izmena sa drugog telefona se samo pretopi.
   Izvor: scripts/zahvalnice/citanje/ u privatnom repozitorijumu.
 -->
@@ -126,19 +127,9 @@
   .glavno.ceka { background: var(--povrs); color: var(--tekst2); border: 1.5px dashed var(--linija); font-size: 17px; }
   .nazad { flex: none; width: 64px; background: var(--povrs); border: 1.5px solid var(--linija); font-size: 24px; }
   .nazad:disabled { opacity: .35; }
-  /* Podešavanja: dugme sa ikonicom i trenutnim stanjem u vrhu; menja se u prozoru */
-  .podesavanja { display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px; margin-left: -9px; border-radius: 999px;
-    background: var(--povrs); border: 1.5px solid var(--linija); color: var(--tekst2); font-size: 14px; font-weight: 600; white-space: nowrap; }
-  .podesavanja svg { width: 18px; height: 18px; flex: none; }
-  /* Polje podešavanja: naziv levo, broj sa − i + desno, opis ispod; sve poravnato uz levu ivicu kao naslov */
-  .polje { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px 14px; padding: 4px 0 6px; }
-  .polje-naziv { font-weight: 700; line-height: 1.3; }
-  .polje-opis { grid-column: 1 / -1; font-size: 14px; color: var(--tekst2); line-height: 1.4; }
-  .stepper { display: flex; align-items: center; gap: 10px; }
-  .stepper button { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); border: 1.5px solid var(--linija); font-size: 26px; font-weight: 700; }
-  .stepper button:disabled { opacity: .35; }
-  .stepper b { font-family: var(--naslovni); font-size: 28px; min-width: 2ch; text-align: center; }
-
+  .imena li.nije { opacity: .55; }
+  .imena li.nije small { font-size: .7em; text-transform: uppercase; letter-spacing: .04em; }
+  .primili.nema { cursor: default; font-weight: 600; color: var(--tekst2); }
   .prijava { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }
   .prijava h1 { margin: 0; font-size: 28px; }
   .prijava p { margin: 0; color: var(--tekst2); line-height: 1.45; max-width: 34ch; }
@@ -158,7 +149,6 @@
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-uvecaj" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4l4 0l0 4"/><path d="M14 10l6 -6"/><path d="M8 20l-4 0l0 -4"/><path d="M4 20l6 -6"/></symbol>
-  <symbol id="i-podesi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l8 0"/><path d="M16 6l4 0"/><path d="M14 4a2 2 0 1 0 0 4a2 2 0 0 0 0 -4"/><path d="M4 12l2 0"/><path d="M10 12l10 0"/><path d="M8 10a2 2 0 1 0 0 4a2 2 0 0 0 0 -4"/><path d="M4 18l11 0"/><path d="M19 18l1 0"/><path d="M17 16a2 2 0 1 0 0 4a2 2 0 0 0 0 -4"/></symbol>
   <symbol id="i-umanji" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4 0l0 -4"/><path d="M3 3l6 6"/><path d="M5 15l4 0l0 4"/><path d="M3 21l6 -6"/><path d="M19 9l-4 0l0 -4"/><path d="M15 9l6 -6"/><path d="M19 15l-4 0l0 4"/><path d="M15 15l6 6"/></symbol>
 </svg>
 <div class="ekran skriveno" id="ekran-ucitava"><div class="prijava"><div class="ucitava"><span class="vrti"></span>Učitavam…</div></div></div>
@@ -173,7 +163,7 @@
 
 <div class="ekran skriveno" id="ekran-rad">
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
-  <div class="vrh"><button class="podesavanja" id="podesavanja" aria-label="Podešavanja"><svg><use href="#i-podesi"/></svg><span id="izlazak-od"></span></button><span id="status" role="status" aria-live="polite"></span></div>
+  <div class="vrh"><span id="izlazak-od"></span><span id="status" role="status" aria-live="polite"></span></div>
   <section class="kartica" id="gore"></section>
   <section class="kartica" id="dole" aria-label="Sledeći izlazak"></section>
   <div class="dugmad">
@@ -233,31 +223,31 @@
   }
 
   // ---------- Stanje ----------
-  // srv: poslednje stanje sa servera; vidi: ono što je na ekranu (srv + radnje koje čekaju); red: radnje koje čekaju server.
-  let srv = null, vidi = null, verzija = 0, uvecana = '';  // uvecana: '', 'gore' ili 'dole'
-  const red = [];
-  const CEKA = 'ceka';  // izlazak koji server tek šalje (posle Dalje / Nazad)
+  // Spisak (zaključan, list Uručivanje) se učita jednom; Dalje i Nazad rade odmah u telefonu, a serveru se u pozadini
+  // šalje samo gde smo (p) i ko je primio. Na 3 s se pita verzija; kad se promeni (skeniranje, drugi telefon), stiže
+  // samo stanje: ko je stigao, ko je primio i gde smo.
+  let spisak = [], N = 0, p = 0, stigli = new Set(), primili = new Set(), verzija = 0, uvecana = '';
+  let zakasneliGore = null;  // brojevi zakasnelih koji su upravo na bini (izlazak posle poslednjeg)
+  const red = [];  // radnje za server: {a: 'uru-p'|'uru-primio', ...}
 
-  // Šta radnja menja na ekranu odmah; null = radnja sad nema smisla (ne šalje se)
-  const PREDVIDI = {
-    'bina-pocni': (b) => (b.dole ? Object.assign({}, b, { pocelo: true }) : null),
-    'bina-dalje': (b) => Object.assign({}, b, { p: b.p + 1, gore: b.dole, dole: b.dole ? CEKA : null, primili: !!b.primiliDole, primiliDole: false }),
-    'bina-nazad': (b) => (b.p === 0 ? Object.assign({}, b, { pocelo: false })
-      : Object.assign({}, b, { p: b.p - 1, dole: b.gore, gore: b.p >= 2 ? CEKA : null, primili: true, primiliDole: b.primili })),
-    'bina-primili': (b, v) => Object.assign({}, b, { primili: v }),
-    'bina-n': (b, v) => Object.assign({}, b, { n: v }),
-  };
-  const ANIMACIJA = { 'bina-dalje': 'napred', 'bina-pocni': 'napred', 'bina-nazad': 'nazad-a' };
+  // 1..N: zaključani izlasci; N+1: zakasneli na bini (zamrznuti kad su izašli); posle toga novi zakasneli
+  function izlazak(i) {
+    if (i < 1) return null;
+    if (i <= N) return { redni: i, ljudi: spisak.filter((x) => x.izl === i) };
+    const naBini = i === p && zakasneliGore;
+    const lj = naBini ? spisak.filter((x) => zakasneliGore.includes(x.broj))
+      : zakasneli().filter((x) => !(p > N && zakasneliGore || []).includes(x.broj));
+    return lj.length ? { redni: i, zakasneli: true, ljudi: lj } : null;
+  }
+  // stigli posle svog izlaska (izlazak im je prošao), a nisu primili
+  const zakasneli = () => spisak.filter((x) => x.izl < Math.min(p, N + 1) && stigli.has(x.broj) && !primili.has(x.broj));
+  const prisutni = (t) => (t ? t.ljudi.filter((x) => stigli.has(x.broj)) : []);
+  const primiliSvi = (t) => { const pr = prisutni(t); return pr.length > 0 && pr.every((x) => primili.has(x.broj)); };
 
-  function radnja(a, v) {
-    const pre = vidi;
-    const posle = PREDVIDI[a](pre, v);
-    if (!posle) return false;
-    red.push({ a, v, p: pre.p });
-    vidi = posle;
-    crtaj(ANIMACIJA[a]);
+  function posalji(a, podaci) {
+    if (a === 'uru-p') { for (let i = red.length - 1; i >= 0; i--) if (red[i].a === 'uru-p') red.splice(i, 1); }
+    red.push(Object.assign({ a }, podaci));
     obradi();
-    return true;
   }
   let obradjuje = false;
   async function obradi() {
@@ -267,32 +257,27 @@
       status('Šaljem…', 'radi');
       const r = red[0];
       try {
-        const o = await server(r.a, { p: r.p, vrednost: r.v });
+        const o = await server(r.a, r);
         red.shift();
-        srv = o.bina; verzija = o.verzija || verzija;
-        if (o.greska) {
-          red.length = 0;  // server je odbio: ostale radnje su predviđene na pogrešnom stanju
-          vidi = srv; crtaj('promena');
-          objasni(o.greska);
-        } else {
-          vidi = red.reduce((b, x) => PREDVIDI[x.a](b, x.v) || b, srv);
-          crtaj('promena');  // pretapa samo ono što je server tek poslao (sledeći izlazak umesto „Pravim…“)
-          if (!red.length) status('✓ Sačuvano', 'ok');
-        }
+        verzija = o.verzija || verzija;
+        if (!red.length) { primeni(o.stanje, false); status('✓ Sačuvano', 'ok'); }
       } catch (e) {
-        red.length = 0;
         if (e.istekla) { obradjuje = false; return prikaziPrijavu(e.message); }
-        vidi = srv; crtaj('promena');
-        status('Nije sačuvano (' + e.message + '), vraćeno. Pokušajte ponovo.', 'lose');
+        status('Nije poslato (' + e.message + '), pokušavam ponovo…', 'lose');
+        await new Promise((d) => setTimeout(d, 3000));
       }
     }
     obradjuje = false;
   }
-  function objasni(g) {
-    const t = { promenjeno: 'Drugi telefon je upravo pomerio izlaske; prikazano je trenutno stanje.', primili: 'Prvo označite da su primili zahvalnice.',
-      prazno: 'Još niko nije stigao ko prima zahvalnicu.', kraj: 'Nema više izlazaka.' }[g] || g;
-    status(t, 'pazi');
-    if (g === 'primili') trazi();
+  // Stanje sa servera; dok radnje čekaju, ekran ostaje kako je korisnik ostavio
+  function primeni(st, odSpolja) {
+    if (!st || red.length) return;
+    stigli = new Set(st.stigli.map(String));
+    primili = new Set(st.primili.map(String));
+    const pomereno = st.p !== p;
+    if (pomereno) { p = st.p; if (p !== N + 1) zakasneliGore = null; }
+    crtaj(pomereno && odSpolja ? 'promena' : null);
+    if (pomereno && odSpolja) status('Drugi telefon je pomerio izlaske.', 'pazi');
   }
 
   // Status u vrhu: šta se upravo dešava. Potvrda nestaje posle 2 s, greška ostaje dok sledeća radnja ne uspe.
@@ -307,64 +292,59 @@
   }
 
   // ---------- Crtanje ----------
-  const naziv = (g) => g || 'Kontrolori bez BM';
-  // 1 osoba, 2–4 osobe (osim 12–14), ostalo osoba
   const osoba = (n) => n + ' ' + (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'osobe' : 'osoba');
-  const koliko = (t) => '<span class="koliko">izlazak ' + t.redni + ' · <b>' + osoba(t.ljudi) + '</b></span>';
-  const izlazaka = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'izlazak' : 'izlazaka');
   const mesto = (g) => { const m = /^BM (\d+)/.exec(g); return m ? OBJEKAT[Number(m[1])] || '' : ''; };
-  const ucitava = (t) => '<div class="prazno"><span class="vrti"></span><span>' + t + '</span></div>';
   const prazno = (t) => '<div class="prazno"><div>' + t + '</div></div>';
-  function izlazak(t, imena) {
-    return '<div class="sadrzaj">' + t.grupe.map((g) => '<div class="grupa"><div class="naziv">' + esc(naziv(g.naziv)) + '</div>'
+  const koliko = (t) => '<span class="koliko">' + (t.zakasneli ? 'zakasneli' : 'izlazak ' + t.redni) + ' · <b>'
+    + (t.zakasneli ? osoba(t.ljudi.length) : prisutni(t).length + ' od ' + t.ljudi.length) + '</b></span>';
+  function htmlIzlazak(t) {
+    const grupe = [];
+    t.ljudi.forEach((x) => { if (!grupe.length || grupe[grupe.length - 1].naziv !== x.grupa) grupe.push({ naziv: x.grupa, ljudi: [] }); grupe[grupe.length - 1].ljudi.push(x); });
+    return '<div class="sadrzaj">' + grupe.map((g) => '<div class="grupa"><div class="naziv">' + esc(g.naziv) + '</div>'
       + (mesto(g.naziv) ? '<div class="mesto">' + esc(mesto(g.naziv)) + '</div>' : '')
-      + (imena ? '<ul class="imena">' + g.ljudi.map((x) => '<li>' + esc(x.ime) + '</li>').join('') + '</ul>' : '') + '</div>').join('') + '</div>';
+      + '<ul class="imena">' + g.ljudi.map((x) => stigli.has(x.broj) ? '<li>' + esc(x.ime) + '</li>'
+        : '<li class="nije"><s>' + esc(x.ime) + '</s> <small>nije stigao</small></li>').join('') + '</ul></div>').join('') + '</div>';
   }
   const dugmeUvecaj = (k) => '<button class="uvecaj" data-uvecaj="' + k + '" aria-label="' + (uvecana === k ? 'Umanji' : 'Uvećaj') + ' karticu">'
     + '<svg><use href="#i-' + (uvecana === k ? 'umanji' : 'uvecaj') + '"/></svg></button>';
-  function htmlGore(b) {
-    const g = b.gore;
-    const oznaka = '<div class="oznaka"><span>Na bini</span>' + (g && g !== CEKA ? koliko(g) : '') + dugmeUvecaj('gore') + '</div>';
-    if (g === CEKA) return oznaka + ucitava('Vraćam prethodni izlazak…');
-    if (!g) return oznaka + prazno(!b.pocelo ? 'Kada pritisnete <b>Počni</b>, prvi izlazak se poziva da se spremi, a sledeće <b>Dalje</b> ga izvodi na binu.'
-      : b.dole ? '<span class="glavni">Niko nije na bini.</span>Pročitajte izlazak dole da se spremi, pa <b>Dalje</b> ga izvodi na binu.'
-      : '<span class="glavni">Gotovo.</span>Svi koji su stigli su prozvani.');
-    return oznaka + izlazak(g, true) + '<label class="primili" id="primili-red"><input type="checkbox" id="primili"' + (b.primili ? ' checked' : '') + '> Primili su zahvalnice</label>';
+  function htmlGore() {
+    const g = izlazak(p);
+    const oznaka = '<div class="oznaka"><span>Na bini</span>' + (g ? koliko(g) : '') + dugmeUvecaj('gore') + '</div>';
+    if (!g) return oznaka + prazno(p === 0 ? '<span class="glavni">Još nije počelo.</span>Pročitajte prvi izlazak dole da se spremi, pa <b>Dalje</b> ga izvodi na binu.'
+      : p > N ? '<span class="glavni">Gotovo.</span>Svi koji su stigli su prozvani.' : '<span class="glavni">Niko nije na bini.</span>');
+    const pr = prisutni(g).length;
+    return oznaka + htmlIzlazak(g) + (pr ? '<label class="primili" id="primili-red"><input type="checkbox" id="primili"' + (primiliSvi(g) ? ' checked' : '') + '> Primili su zahvalnice</label>'
+      : '<div class="primili nema">Niko iz ovog izlaska nije stigao. Dalje.</div>');
   }
-  function htmlDole(b) {
-    const d = b.dole;
-    const oznaka = '<div class="oznaka"><span>' + (b.pocelo ? 'Neka se spreme' : 'Prvi izlazak') + '</span>'
-      + (d && d !== CEKA ? koliko(d) : '')
-      + dugmeUvecaj('dole') + '</div>';
-    if (d === CEKA) return oznaka + ucitava('Pravim sledeći izlazak…');
-    if (!d) return oznaka + prazno(b.pocelo ? (b.gore ? 'Gore je poslednji izlazak. Ko zakasni, pojaviće se ovde.' : 'Nema više nikoga ko je stigao, a nije prozvan.')
-      : '<span class="glavni">Još niko nije stigao ko prima zahvalnicu.</span>Izlasci se prave od gostiju skeniranih na ulazu i pojaviće se ovde čim neko stigne.');
-    return oznaka + izlazak(d, true);
+  function htmlDole() {
+    const d = izlazak(p + 1);
+    const oznaka = '<div class="oznaka"><span>' + (p === 0 ? 'Prvi izlazak' : p >= N ? 'Zakasneli' : 'Neka se spreme') + '</span>' + (d ? koliko(d) : '') + dugmeUvecaj('dole') + '</div>';
+    if (!d) return oznaka + prazno(p >= N ? 'Ko zakasni (stigne posle svog izlaska), pojaviće se ovde.' : '');
+    return oznaka + htmlIzlazak(d);
   }
-  // Kartica se menja samo kad joj se promeni sadržaj (ne gubi skrol), uz animaciju radnje ili pretapanje
   function postavi(el, html, anim) {
     if (el.dataset.html === html) return;
     el.dataset.html = html;
     el.innerHTML = html;
     const sd = el.querySelector('.sadrzaj');
-    if (sd) sd.scrollTop = 0;
+    if (sd && anim) sd.scrollTop = 0;
     if (anim) { el.classList.remove('napred', 'nazad-a', 'promena'); void el.offsetWidth; el.classList.add(anim); }
   }
   function crtaj(anim) {
-    const b = vidi;
     $('nalog').textContent = mejl;
     $('ekran-rad').classList.toggle('uvecano', !!uvecana);
     $('gore').classList.toggle('uvecana', uvecana === 'gore');
     $('dole').classList.toggle('uvecana', uvecana === 'dole');
-    $('izlazak-od').innerHTML = (!b.pocelo ? '<b>' + b.ukupno + '</b> ' + izlazaka(b.ukupno) + ' · ' + osoba(b.preostalo)
-      : b.p === 0 ? 'Sprema se izlazak <b>1</b> od ' + b.ukupno : 'Na bini izlazak <b>' + b.p + '</b> od ' + b.ukupno) + ' · do ' + b.n;
-    postavi($('gore'), htmlGore(b), anim);
-    postavi($('dole'), htmlDole(b), anim);
+    const z = p >= 1 && p <= N ? zakasneli().length : 0;
+    $('izlazak-od').innerHTML = (p === 0 ? '<b>' + N + '</b> izlazaka · ' + osoba(spisak.length)
+      : p <= N ? 'Na bini izlazak <b>' + p + '</b> od ' + N : 'Zakasneli') + (z ? ' · zakasnelih <b>' + z + '</b>' : '');
+    postavi($('gore'), htmlGore(), anim);
+    postavi($('dole'), htmlDole(), anim);
     const gl = $('glavno');
-    const ceka = !b.pocelo && !b.dole;
-    gl.textContent = !b.pocelo ? (b.dole ? 'POČNI' : 'ČEKA SE PRVI GOST') : !b.gore && !b.dole ? 'GOTOVO' : 'DALJE ›';
-    gl.classList.toggle('ceka', ceka || (b.pocelo && !b.gore && !b.dole));
-    $('nazad').disabled = !b.pocelo;
+    const kraj = p > N && !zakasneli().length;
+    gl.textContent = kraj ? 'GOTOVO' : 'DALJE ›';
+    gl.classList.toggle('ceka', kraj);
+    $('nazad').disabled = p === 0;
   }
 
   // ---------- Radnje ----------
@@ -375,41 +355,37 @@
     if (!r.querySelector('.oblacic')) r.insertAdjacentHTML('beforeend', '<div class="oblacic">Prvo označite da su primili zahvalnice.</div>');
   }
   function trese(el) { el.classList.remove('trese'); void el.offsetWidth; el.classList.add('trese'); }
+  function pomeri(novo, anim) {
+    p = novo;
+    zakasneliGore = p === N + 1 ? zakasneli().map((x) => x.broj) : null;
+    crtaj(anim);
+    posalji('uru-p', { p });
+  }
   $('glavno').addEventListener('click', () => {
-    const b = vidi;
-    if (!b) return;
-    if (!b.pocelo) { if (!radnja('bina-pocni')) { trese($('glavno')); status('Još niko nije stigao ko prima zahvalnicu.', 'pazi'); } return; }
-    if (b.gore === CEKA || b.dole === CEKA) return status('Sačekajte, server još šalje izlazak…', 'radi');
-    if (b.gore && !b.primili) return trazi();
-    if (!b.gore && !b.dole) { trese($('glavno')); return status('Nema više izlazaka.', 'pazi'); }
-    radnja('bina-dalje');
+    const g = izlazak(p);
+    if (g && prisutni(g).length && !primiliSvi(g)) return trazi();
+    if (p < N + 1) return pomeri(p + 1, 'napred');
+    // posle poslednjeg izlaska: sledeća grupa zakasnelih, dok ih ima
+    if (zakasneli().length) { zakasneliGore = zakasneli().map((x) => x.broj); crtaj('napred'); return; }
+    trese($('glavno')); status('Nema više izlazaka.', 'pazi');
   });
-  $('gore').addEventListener('change', (e) => { if (e.target.id === 'primili') radnja('bina-primili', e.target.checked); });
+  $('gore').addEventListener('change', (e) => {
+    if (e.target.id !== 'primili') return;
+    const brojevi = prisutni(izlazak(p)).map((x) => x.broj);
+    brojevi.forEach((b) => (e.target.checked ? primili.add(b) : primili.delete(b)));
+    crtaj();
+    posalji('uru-primio', { brojevi, vrednost: e.target.checked });
+  });
   document.addEventListener('click', (e) => {
     const u = e.target.closest('[data-uvecaj]');
     if (u) { uvecana = uvecana === u.dataset.uvecaj ? '' : u.dataset.uvecaj; return crtaj(); }
   });
   $('nazad').addEventListener('click', () => {
-    const b = vidi;
-    if (!b || !b.pocelo || b.gore === CEKA || b.dole === CEKA) return;
-    const g = b.gore;
-    prozor('Vratiti jedan korak?', g ? 'Izlazak ' + g.redni + ' se vraća u „Neka se spreme“' + (b.p >= 2 ? ', a izlazak ' + (g.redni - 1) + ' ponovo na binu.' : '.')
-      : 'Prvi izlazak se vraća, kao da niste počeli.', [{ tekst: 'Vrati', glavno: true, akcija: () => radnja('bina-nazad') }, { tekst: 'Otkaži' }]);
+    if (p === 0) return;
+    prozor('Vratiti jedan korak?', p > N ? 'Poslednji izlazak se vraća na binu.' : 'Izlazak ' + p + ' se vraća u „Neka se spreme“'
+      + (p >= 2 ? ', a izlazak ' + (p - 1) + ' ponovo na binu.' : '.') + ' Ko je primio, ostaje označen.',
+      [{ tekst: 'Vrati', glavno: true, akcija: () => pomeri(Math.min(p, N + 1) - 1, 'nazad-a') }, { tekst: 'Otkaži' }]);
   });
-  // Podešavanja u prozoru: menja se samo u prozoru, a čuva (šalje serveru) tek na Sačuvaj
-  const N_MIN = 4, N_MAX = 40;
-  function podesavanja() {
-    let n = vidi.n;
-    const crtajN = () => { $('pn').textContent = n; $('pn-manje').disabled = n <= N_MIN; $('pn-vise').disabled = n >= N_MAX; };
-    prozor('Podešavanja', '', [{ tekst: 'Sačuvaj', glavno: true, akcija: () => { if (n !== vidi.n) radnja('bina-n', n); } }, { tekst: 'Otkaži' }],
-      '<div class="polje"><div class="polje-naziv">Najviše ljudi u jednom izlasku</div>'
-      + '<div class="stepper"><button id="pn-manje" aria-label="Manje">−</button><b id="pn"></b><button id="pn-vise" aria-label="Više">+</button></div>'
-      + '<div class="polje-opis">Važi za izlaske koji još nisu prozvani. Grupe se slažu dok staju, a veća grupa se deli na jednake delove.</div></div>');
-    $('pn-manje').addEventListener('click', () => { n = Math.max(N_MIN, n - 1); crtajN(); });
-    $('pn-vise').addEventListener('click', () => { n = Math.min(N_MAX, n + 1); crtajN(); });
-    crtajN();
-  }
-  $('podesavanja').addEventListener('click', () => vidi && podesavanja());
 
   function prozor(naslov, tekst, dugmad, telo) {
     $('prozor-naslov').textContent = naslov;
@@ -428,19 +404,16 @@
   }
   $('prozor').addEventListener('click', (e) => { if (e.target === $('prozor')) $('prozor').classList.add('skriveno'); });
 
-  // Na 2 s pita samo verziju; kad se promeni (skeniranje, drugi telefon), čita izlaske. Dok radnje čekaju, ne dira ekran.
+  // Na 3 s pita samo verziju; kad se promeni, stiže stanje (ko je stigao, ko je primio, gde smo).
   let pratim = null;
   async function prati() {
     if (red.length || obradjuje || document.hidden) return;
     try {
       const o = await server('verzija');
       if (o.verzija === verzija) return;
-      const b = await server('bina');
-      if (red.length || obradjuje) return;
-      const pomereno = b.bina.p !== srv.p || b.bina.pocelo !== srv.pocelo;
-      srv = vidi = b.bina; verzija = b.verzija;
-      crtaj(pomereno ? 'promena' : null);
-      if (pomereno) status('Drugi telefon je pomerio izlaske.', 'pazi');
+      const s = await server('uru-stanje');
+      verzija = s.verzija;
+      primeni(s.stanje, true);
     } catch (e) {
       if (e.istekla) return prikaziPrijavu(e.message);
       status('Nema veze sa serverom, pokušavam ponovo…', 'lose');
@@ -457,12 +430,16 @@
   async function pocni() {
     ekran('ucitava');
     try {
-      const o = await server('bina');
-      srv = vidi = o.bina; verzija = o.verzija;
+      const o = await server('uru');
+      spisak = o.spisak.map(([rb, izl, broj, ime, grupa]) => ({ rb, izl, broj: String(broj), ime, grupa }));
+      N = spisak.reduce((m, x) => Math.max(m, x.izl), 0);
+      if (!N) throw new Error('Spisak uručivanja još nije upisan (list Uručivanje). Javite štabu.');
+      verzija = o.verzija;
+      stigli = new Set(o.stanje.stigli.map(String)); primili = new Set(o.stanje.primili.map(String)); p = o.stanje.p;
       ekran('rad');
       crtaj('promena');
       clearInterval(pratim);
-      pratim = setInterval(prati, 2000);
+      pratim = setInterval(prati, 3000);
     } catch (e) { prikaziPrijavu(e.message); }
   }
   $('prijavi').addEventListener('click', () => traziToken().then(pocni).catch((e) => ($('prijava-poruka').textContent = e.message)));
