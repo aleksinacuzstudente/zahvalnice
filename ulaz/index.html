@@ -424,8 +424,8 @@
   .legenda span { display: inline-flex; align-items: center; gap: 5px; }
   .legenda svg { width: 14px; height: 14px; }
   /* Kartica izabrane osobe ispod mape */
-  .sala.ima-karticu .mapa { flex: 0 0 calc(40% - 6px); }  /* štab: kartica 60 %, mapa 40 % */
-  .sala-kartica { position: relative; flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  /* štab 16.11.2026: kartica visoka koliko njen sadržaj, mapa dobija ostatak (najviše 60 %, za svaki slučaj skrol) */
+  .sala-kartica { position: relative; flex: 0 0 auto; max-height: 60%; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
     background: var(--povrs); border-radius: 16px; animation: gore .3s var(--glatko) both; }
   .k-telo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 14px 16px 16px; }
   .sala-kartica .zatvori { position: absolute; z-index: 1; right: 10px; top: 10px; width: 38px; height: 38px; border-radius: 50%; background: var(--pozadina); display: grid; place-items: center; }
