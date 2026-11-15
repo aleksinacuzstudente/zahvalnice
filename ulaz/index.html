@@ -1,0 +1,1822 @@
+<!doctype html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f8b6ba" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#7d133a" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Zahvalnice 2">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="ikona-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Dodela zahvalnica – ulaz</title>
+<!--
+  Dodela zahvalnica, dolazak gostiju: skener se prijavi Google nalogom, kamera čita QR gosta i upis ide pravo u
+  Google tabelu. Nova prijava: Google daje samo mejl skenera, a čita i upisuje Apps Script (scripts/zahvalnice/server)
+  kao vlasnik tabele, samo za naloge sa kojima je tabela podeljena; stranica nema podatke, imena stižu tek posle
+  prijave. Izvor: scripts/zahvalnice/ulaz/ u privatnom repozitorijumu.
+  Boje: Sanzo Wada, A Dictionary of Color Combinations (imena uz svaku boju).
+-->
+<script>
+  // Sačuvana prijava → odmah ekran za skeniranje, bez treptaja ekrana za prijavu.
+  try { const t = JSON.parse(localStorage.getItem('nova-token') || 'null'); if (t && t.token && t.do > Date.now() + 60000) document.documentElement.classList.add('ucitava'); } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+  :root {
+    --pozadina: #f8b6ba;   /* Corinthian Pink */
+    --povrs: #ffffff;      /* White */
+    --povrs2: #e0b3b6;     /* Cameo Pink */
+    --tekst: #7d133a;      /* Pansy Purple */
+    --tekst2: #713b4c;     /* Violet Carmine */
+    --linija: #e0b3b6;     /* Cameo Pink */
+    --akcent: #a62c37;     /* Carmine Red */
+    --na-akcentu: #ffffff;
+    --ok: #1a7444;         /* Diamine Green */
+    --lose: #a62c37;       /* Carmine Red */
+    --upozorenje: #ae5224; /* Burnt Sienna */
+    --kamera: #7d133a;     /* Pansy Purple */
+    --na-kameri: #f5ecc2;  /* Sulpher Yellow */
+    --na-boji: #ffffff;
+    --prsten: rgba(166, 44, 55, .22);
+    --senka: 0 2px 6px rgba(125, 19, 58, .14);
+    --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
+    --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
+    --naslovni: "Space Grotesk", system-ui, sans-serif;
+    --telo: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --pozadina: #7d133a; /* Pansy Purple */
+      --povrs: #a72144;    /* Red */
+      --povrs2: #501345;   /* Cotinga Purple */
+      --tekst: #f5ecc2;    /* Sulpher Yellow */
+      --tekst2: #fdd4bd;   /* Seashell Pink */
+      --linija: #501345;   /* Cotinga Purple */
+      --akcent: #f5ecc2;   /* Sulpher Yellow */
+      --na-akcentu: #7d133a;
+      --lose: #cc1236;     /* Carmine */
+      --kamera: #501345;   /* Cotinga Purple */
+      --prsten: rgba(245, 236, 194, .3);
+      --senka: none;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Bez zumiranja: dupli dodir (Dalje više puta) i štipanje ne uvećavaju stranicu, kao u aplikaciji */
+  html, body, button, .dugme, label { touch-action: manipulation; }
+  html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
+    background: var(--traka, var(--pozadina)); color: var(--tekst); font-family: var(--telo); font-size: 16px; }
+  /* Trake se boje bez prelaza: Safari očita boju u trenutku promene, pa bi uhvatio staru boju sa početka prelaza */
+  h1, h2, h3, .naslov, .ime { font-family: var(--naslovni); }
+  /* Safari na iPhone-u boji svoju donju traku po elementu uz dno ekrana: ovde je to boja pozadine */
+  .dno-safari { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--dno) + 12px); background: var(--traka, var(--pozadina)); z-index: 1; pointer-events: none; }
+  /* U Safariju (ne PWA) je safe-area-inset-top 0, pa traka mora da ima bar 3px, inače je Safari ne vidi i boju uzme
+     sa potvrde dok se još širi. Boja se menja odjednom (Safari je očita jednom), a potvrda se pojavi brzim pretapanjem, da idu zajedno. */
+  /* Isto za vrh (notch, Dynamic Island): Safari boji traku po elementu uz vrh, pa tu uvek stoji boja ekrana, i vraća se kad rezultat nestane */
+  .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: max(var(--vrh), 3px); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; }
+  button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
+  button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
+  .skriveno { display: none !important; }
+  /* Sačuvana prijava: dok server ne potvrdi, samo „Učitavam…“ (ni uputstvo ni kamera) */
+  #ekran-ucitava { display: none; }
+  html.ucitava #ekran-prijava, html.ucitava #ekran-rad { display: none !important; }
+  html.ucitava #ekran-ucitava { display: flex; align-items: center; justify-content: center; color: var(--tekst2); font-weight: 700; font-size: 17px; }
+  /* Traka: prijava uskoro ističe */
+  .istice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
+    background: var(--upozorenje); color: var(--na-boji); font-weight: 700; font-size: 15px; animation: ulaz .3s var(--glatko) both; }
+  .istice span { white-space: nowrap; text-decoration: underline; }
+  .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .nalogred .mejl { min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
+    color: var(--tekst); font-size: 14px; font-weight: 600; }
+
+  /* PWA na iPhone-u (iOS 26, WebKit 301108): donji pojas ekrana (100lvh - 100dvh) se ne iscrtava, pa sadržaj ostaje
+     u 100dvh, a od donjeg razmaka za crtu početnog ekrana oduzima se taj mrtvi pojas (on je već prekriva). */
+  @media (display-mode: standalone) {
+    :root { --dno: max(0px, calc(env(safe-area-inset-bottom, 0px) - (100lvh - 100dvh))); }
+    /* U PWA nema Safari traka, pa ni trake za njihovu boju: rezultat sam pokriva ceo ekran */
+    .vrh-safari, .dno-safari { display: none; }
+  }
+  .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
+    gap: 14px; width: 100%; max-width: 560px; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
+  @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  /* Krug koji se vrti: „Učitavam…“ posle prijave i dugme „Upisujem…“ */
+  .vrti { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: vrti .7s linear infinite; }
+  @keyframes vrti { to { transform: rotate(360deg); } }
+  .dugme.radi { pointer-events: none; opacity: .9; }
+  html.ucitava #ekran-ucitava .vrti { margin-right: 10px; }
+
+  /* Prijava sa uputstvom korak po korak */
+  .prijava { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  .prijava .naslovna { display: flex; align-items: center; gap: 12px; }
+  .prijava .logo { width: 52px; height: 52px; border-radius: 14px; box-shadow: var(--senka); animation: lebdi 4s ease-in-out infinite; }
+  @keyframes lebdi { 50% { transform: translateY(-4px); } }
+  .prijava h2 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; }
+  .prijava .podnaslov { font-size: 14px; color: var(--tekst2); margin-top: 2px; }
+  .prijava .poruka { color: var(--lose); font-weight: 700; text-align: center; margin: 0; min-height: 0; }
+  .prijava .poruka:empty { display: none; }
+  /* Koraci su kartice u traci preko cele širine ekrana: pomera se cela kartica, a susedna ulazi sa ivice */
+  .koraci { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 -16px; overflow: hidden; }
+  .koraci .vrpca { flex: 1; min-height: 0; min-width: 0; display: flex; transition: transform .45s var(--glatko); touch-action: pan-y; will-change: transform; }
+  .koraci .vrpca.vuce { transition: none; }
+  .korak { flex: 0 0 100%; min-width: 0; display: flex; padding: 2px 16px 8px; }
+  .korak .kartica { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px; background: var(--povrs); border-radius: 22px; box-shadow: var(--senka); }
+  .korak .oznaka { font-size: 13px; font-weight: 800; letter-spacing: .08em; color: var(--akcent); }
+  @media (prefers-color-scheme: dark) { .korak .oznaka { color: var(--tekst2); } }
+  .korak h3 { margin: 0; font-size: 20px; font-weight: 800; }
+  .korak p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--tekst2); }
+  .korak p b { color: var(--tekst); }
+  .tacke { display: flex; justify-content: center; gap: 7px; padding: 2px 0 4px; }
+  .tacke i { width: 8px; height: 8px; border-radius: 4px; background: var(--linija); transition: width .3s var(--glatko), background .3s; }
+  .tacke i.ovde { width: 24px; background: var(--akcent); }
+
+  .navigacija { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .navigacija .dugme, .navigacija .dugme.glavno { min-height: 54px; font-size: 17px; }
+  /* Kratka prijava (posle prve uspešne prijave): samo Prijavite se i Uputstvo; uputstvo se otvara u prozoru */
+  .kratka { display: none; }
+  html.kratko .kratka { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; }
+  html.kratko .kratka p { margin: 0 0 6px; text-align: center; color: var(--tekst2); font-size: 15px; line-height: 1.45; }
+  html.kratko .vodic { display: none; }
+  .vodic { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .vodic .vrh-vodica { display: none; }
+  html.kratko.vodic-otvoren .vodic { display: flex; position: fixed; inset: 0; z-index: 25; background: var(--pozadina);
+    padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px); max-width: 560px; margin: 0 auto; animation: gore .35s var(--glatko) both; }
+  html.kratko.vodic-otvoren .vodic.izlazi { animation: dole .25s ease-in both; }
+  html.kratko.vodic-otvoren .vodic .vrh-vodica { display: flex; align-items: center; justify-content: space-between; }
+  .vrh-vodica h2 { margin: 0; font-size: 22px; font-weight: 800; }
+  .vrh-vodica .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
+  .vrh-vodica .zatvori svg { width: 22px; height: 22px; }
+  .navigacija .dugme:disabled { opacity: .4; }
+
+  /* Crtež ekrana u uputstvu (izmišljeni nalozi, ne prava slika) */
+  .crtez { flex: 1; min-height: 150px; max-height: 340px; position: relative; border-radius: 14px; overflow: hidden; background: #fff; color: #202124;
+    border: 1px solid #dadce0; font-family: Roboto, system-ui, sans-serif; font-size: 12px; overflow-wrap: anywhere; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .crtez.tamni { background: #131314; color: #e3e3e3; border-color: #3c4043; }
+  .crtez .g { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #5f6368; padding-bottom: 6px; border-bottom: 1px solid #e0e0e0; }
+  .crtez.tamni .g { color: #c4c7c5; border-color: #3c4043; }
+  .crtez .g b { font-weight: 800; font-size: 14px; background: linear-gradient(90deg, #4285f4, #ea4335, #fbbc05, #34a853); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .crtez .velik { font-size: 18px; line-height: 1.2; }
+  .crtez .sitno { color: #5f6368; line-height: 1.4; }
+  .crtez.tamni .sitno { color: #c4c7c5; }
+  .crtez .nalog { display: flex; align-items: center; gap: 10px; padding: 6px 4px; border-bottom: 1px solid #e0e0e0; }
+  .crtez.tamni .nalog { border-color: #3c4043; }
+  .crtez .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 12px; flex: none; }
+  .crtez .nalog small { display: block; color: #8e918f; }
+  .crtez .trougao { width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 30px solid #d93025; position: relative; }
+  .crtez .red { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .crtez .plavo { background: #4285f4; color: #fff; font-weight: 700; padding: 7px 10px; border-radius: 4px; font-size: 11px; }
+  .crtez .veza { text-decoration: underline; color: #5f6368; }
+  .crtez .kvacica { display: flex; align-items: center; gap: 8px; padding: 5px 0; }
+  .crtez .kvacica i { width: 16px; height: 16px; border: 2px solid #a8c7fa; border-radius: 3px; flex: none; display: grid; place-items: center; }
+  .crtez .kvacica i::after { content: ""; width: 8px; height: 4px; border-left: 2px solid #062e6f; border-bottom: 2px solid #062e6f; transform: rotate(-45deg) translate(1px, -1px); }
+  .crtez .kvacica.puno i { background: #a8c7fa; }
+  .crtez .okvir-dugme { border: 1px solid #8e918f; border-radius: 20px; padding: 7px 0; text-align: center; color: #a8c7fa; flex: 1; }
+  .crtez .ios { margin: auto; width: 82%; background: rgba(242, 242, 247, .96); border-radius: 14px; text-align: center; overflow: hidden; color: #000; }
+  .crtez .ios div { padding: 12px 10px; font-weight: 600; font-size: 12px; }
+  .crtez .ios .dugmici { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #c6c6c8; padding: 0; }
+  .crtez .ios .dugmici span { padding: 9px; color: #007aff; font-weight: 500; }
+  .crtez .ios .dugmici span + span { border-left: 1px solid #c6c6c8; font-weight: 700; }
+  .crtez.zeleno { background: var(--ok); color: #fff; align-items: center; justify-content: center; text-align: center; border: 0; }
+  .crtez.zeleno svg { width: 48px; height: 48px; }
+  .crtez.zeleno .velik { font-weight: 800; }
+  .dodir { position: relative; border-radius: 6px; }
+  .dodir::after { content: ""; position: absolute; inset: -5px; border: 3px solid #e31f26; border-radius: 10px; pointer-events: none;
+    box-shadow: 0 0 0 2px #fff, inset 0 0 0 1px #fff; animation: dodir 1.4s ease-out infinite; }  /* Spectrum Red */
+  @keyframes dodir { 0% { opacity: 1; transform: scale(.92); } 80%, 100% { opacity: 0; transform: scale(1.12); } }
+
+  /* Napredak: Stiglo 3 od 506 i traka u istom redu */
+  .napredak { display: flex; align-items: center; gap: 14px; }
+  .napredak .broj { white-space: nowrap; font-family: var(--telo); font-size: 18px; line-height: 1; font-weight: 500; color: var(--tekst2); }
+  .napredak .broj b { display: inline-block; font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
+  .napredak .broj b.skok { animation: skok .45s var(--opruga); }
+  .napredak .ceka { font-size: 14px; font-weight: 700; color: var(--tekst2); }
+  .napredak .ceka.nema-veze { color: var(--upozorenje); }
+  @keyframes skok { 40% { transform: scale(1.3); color: var(--ok); } }
+  .traka { flex: 1; min-width: 60px; height: 10px; align-self: center; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
+  .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 5px; transition: width .6s var(--glatko); }
+
+  /* Kamera zauzima sav preostali prostor; nišan je kvadrat u sredini (jedinice kontejnera) */
+  .kamera { position: relative; flex: 1; min-height: 160px; width: 100%; border-radius: 24px; overflow: hidden;
+    background: var(--kamera); box-shadow: var(--senka); container-type: size; }
+  .kamera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .kamera .nisan { position: absolute; left: 50%; top: 50%; width: 66vmin; width: min(68cqw, 68cqh); aspect-ratio: 1 / 1;
+    transform: translate(-50%, -50%); pointer-events: none; transition: width .3s var(--glatko); }
+  .kamera.cita .nisan { width: min(60cqw, 60cqh); }
+  .kamera .nisan::before, .kamera .nisan::after, .kamera .nisan i::before, .kamera .nisan i::after {
+    content: ""; position: absolute; width: 36px; height: 36px; border: 5px solid #f5ecc2; }
+  .kamera .nisan::before { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 12px 0 0 0; }
+  .kamera .nisan::after { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 12px 0 0; }
+  .kamera .nisan i::before { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 12px; }
+  .kamera .nisan i::after { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 12px 0; }
+  /* Dok kamera radi, uglovi nišana mirno dišu (bez „lasera“) */
+  .kamera .linija { display: none; }
+  .kamera:has(.linija:not(.skriveno)) .nisan { animation: nisan 2.6s ease-in-out infinite; }
+  .kamera.cita .nisan { animation: none; opacity: .35; }
+  /* Upis u toku: kartica istog oblika kao kamera, uvučena za marginu ekrana (16 px), da se kamera vidi oko nje */
+  .kamera .upis { position: absolute; inset: 16px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 20px; text-align: center; background: var(--povrs); color: var(--tekst); box-shadow: 0 10px 30px rgba(40, 0, 20, .3);
+    animation: upis-ulaz .28s var(--glatko) both; }
+  @keyframes upis-ulaz { from { opacity: 0; transform: scale(.94); } to { opacity: 1; transform: none; } }
+  .kamera .upis .vrti { width: 34px; height: 34px; border-width: 3.5px; color: var(--akcent); }
+  .kamera .upis-ime { font-family: var(--naslovni); font-size: clamp(24px, 7vw, 32px); font-weight: 800; line-height: 1.15; }
+  .kamera .upis-ime:empty { display: none; }
+  .kamera .upis-tekst { font-size: 16px; font-weight: 600; color: var(--tekst2); }
+  .kamera.cita .status { visibility: hidden; }
+  @keyframes nisan { 50% { scale: 1.035; opacity: .75; } }
+  .kamera .status { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: center; font-size: 15px; font-weight: 600;
+    color: var(--na-kameri); background: linear-gradient(transparent, rgba(40, 0, 20, .7)); }
+  .kamera .pokreni { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    background: var(--kamera); color: var(--na-kameri); font-size: 20px; font-weight: 800; }
+  .kamera .pokreni svg { width: 68px; height: 68px; animation: dise 2s ease-in-out infinite; }
+  @keyframes dise { 50% { transform: scale(1.08); opacity: .8; } }
+  .kamera .rezerva { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    padding: 20px; text-align: center; background: var(--kamera); color: var(--na-kameri); }
+  .kamera .rezerva > svg { width: 52px; height: 52px; }
+  .kamera .rezerva h3 { margin: 0; font-size: 21px; }
+  .kamera .rezerva p { margin: 0; font-size: 15px; line-height: 1.45; opacity: .85; max-width: 320px; }
+  .kamera .rezerva .dugme { min-height: 52px; padding: 0 22px; }
+  .kamera .rezerva .sporedno { background: none; box-shadow: none; color: var(--na-kameri); text-decoration: underline; min-height: 40px; font-size: 15px; }
+
+  .dugmad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .dugme { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 58px; border-radius: 16px;
+    background: var(--povrs); color: var(--tekst); font-size: 17px; font-weight: 700; box-shadow: var(--senka); }
+  .dugme svg { width: 22px; height: 22px; }
+  .dugme.glavno { background: var(--akcent); color: var(--na-akcentu); font-size: 19px; min-height: 62px; }
+
+  /* Dolazak: osoba, njeni gosti i mesta za sve odjednom */
+  .pretraga li.klik { cursor: pointer; }
+  .pretraga li.klik:active { background: var(--povrs); }
+  .pretraga .znak { font-size: 13px; font-weight: 700; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); color: var(--tekst2); }
+  .pretraga .znak.bez { border-color: var(--akcent); color: var(--akcent); }
+  .osoba-telo { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+  .osoba-dno { padding: 10px 0 calc(var(--dno) + 12px); display: grid; gap: 8px; }
+  .osoba-dno .dugme:disabled { opacity: .45; }
+  .osoba-dno .tekst-dugme { background: none; box-shadow: none; min-height: 40px; font-size: 15px; color: var(--tekst2); text-decoration: underline; }
+  .osoba .ime-osobe { font-family: var(--naslovni); font-size: 26px; font-weight: 800; line-height: 1.15; }
+  .osoba .sta { font-size: 14px; color: var(--tekst2); margin-top: 4px; }
+  .osoba .stanje { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: var(--povrs); font-size: 16px; line-height: 1.4; }
+  .osoba .stanje b { font-size: 18px; }
+  .osoba .stanje.bez { border: 2px dashed var(--linija); background: none; }
+  .osoba h3 { margin: 22px 0 8px; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--tekst2); }
+  .osoba .red-gosta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; animation: pojava .18s ease-out both; }
+  .osoba .red-gosta input { padding-left: 16px; }
+  .osoba .red-gosta button { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--povrs); display: grid; place-items: center; color: var(--tekst2); }
+  .osoba .red-gosta button svg { width: 20px; height: 20px; }
+  .osoba .dodaj-gosta { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 16px; border-radius: 14px; border: 2px dashed var(--linija); color: var(--tekst); font-weight: 700; font-size: 16px; width: 100%; justify-content: center; }
+  .osoba .dodaj-gosta svg { width: 20px; height: 20px; }
+  .osoba .uputstvo { font-size: 13px; color: var(--tekst2); margin: 4px 2px 0; }
+  .osoba .greska-poruka { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--lose); color: #fff; font-weight: 700; animation: pojava .18s ease-out both; }
+  .osoba .gotovo-ikona { width: 64px; height: 64px; border-radius: 50%; background: var(--ok); color: #fff; display: grid; place-items: center; margin: 4px 0 12px; animation: iskoci .45s var(--opruga) both; }
+  .osoba .gotovo-ikona svg { width: 34px; height: 34px; }
+  .osoba .mesta { list-style: none; padding: 0; margin: 0; }
+  .osoba .mesta li { display: block; padding: 12px 0; border-bottom: 1px solid var(--linija); animation: pojava .2s ease-out both; }
+  .osoba .mesta .ko { font-size: 18px; }
+  .osoba .mesta .gde { font-size: 20px; margin-top: 4px; }
+  .osoba .mesta .gde b { font-size: 24px; }
+  .mini { margin-top: 16px; display: grid; gap: 10px; }
+  .mini .red-sale { font-size: 13px; color: var(--tekst2); font-weight: 700; }
+  .mini .sedista { display: flex; gap: 3px; margin-top: 4px; }
+  .mini .sedista i { flex: 1; height: 18px; border-radius: 4px; background: var(--linija); opacity: .5; font-style: normal; font-size: 10px; font-weight: 800; display: grid; place-items: center; color: transparent; }
+  .mini .sedista i.zauzeto { opacity: 1; background: var(--tekst2); }
+  .mini .sedista i.ovde { opacity: 1; background: var(--ok); color: #fff; height: 22px; margin-top: -2px; animation: iskoci .45s var(--opruga) both; }
+  .mini .bina { text-align: center; font-size: 11px; letter-spacing: .2em; color: var(--tekst2); border-top: 3px solid var(--tekst2); padding-top: 3px; }
+
+  /* Rezultat preko celog ekrana: talas iz sredine, ikonica iskače, kvačica se iscrtava */
+  .rezultat { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 14px; padding: calc(var(--vrh) + 13vh) 24px calc(var(--dno) + 120px); text-align: center; color: var(--na-boji);
+    animation: pojava .18s ease-out both; }
+  @keyframes pojava { from { opacity: 0; } }
+  .rezultat.ok { background: var(--ok); }
+  .rezultat.lose { background: var(--lose); }
+  .rezultat.upozorenje { background: var(--upozorenje); }
+  .rezultat.izlazi { animation: nestaje .25s ease-in both; }
+  @keyframes talas { from { clip-path: circle(0% at 50% 45%); } to { clip-path: circle(150% at 50% 45%); } }
+  @keyframes nestaje { to { opacity: 0; transform: scale(1.03); } }
+  .rezultat svg { width: 104px; height: 104px; animation: iskoci .55s var(--opruga) .1s both; }
+  .rezultat svg .potez { stroke-dasharray: 30; stroke-dashoffset: 30; animation: crtaj .45s ease-out .35s forwards; }
+  @keyframes iskoci { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes crtaj { to { stroke-dashoffset: 0; } }
+  .rezultat.lose svg { animation: iskoci .55s var(--opruga) .1s both, trese .4s ease-in-out .6s; }
+  @keyframes trese { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+  .rezultat .naslov, .rezultat .ime, .rezultat .detalj { animation: ulaz .4s var(--glatko) both; }
+  .rezultat .naslov { font-size: 22px; font-weight: 800; letter-spacing: .1em; animation-delay: .15s; }
+  .rezultat .ime { font-size: clamp(32px, 9vw, 50px); font-weight: 800; line-height: 1.1; animation-delay: .22s; }
+  .rezultat .detalj { font-size: 19px; opacity: .92; line-height: 1.45; animation-delay: .29s; }
+  .rezultat .dalje { position: absolute; bottom: calc(var(--dno) + 28px); left: 20px; right: 20px; max-width: 420px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center; gap: 10px; padding: 16px 20px; border-radius: 999px; border: 2px solid rgba(255,255,255,.85); background: rgba(255,255,255,.16);
+    font-size: 18px; font-weight: 800; animation: ulaz .4s var(--glatko) .5s both, puls 1.6s ease-in-out 1s infinite; }
+  .rezultat .dalje svg { width: 24px; height: 24px; animation: none; }
+  @keyframes puls { 50% { box-shadow: 0 0 0 10px rgba(255,255,255,.12); background: rgba(255,255,255,.26); } }
+  .rezultat .vreme { position: absolute; bottom: 0; left: 0; height: 5px; background: rgba(255,255,255,.6); animation: odbrojava 1.8s linear forwards; }
+  @keyframes odbrojava { from { width: 100%; } to { width: 0; } }
+  .rezultat .vreme { animation-duration: 2.6s; }
+
+  /* Pretraga preko celog ekrana, prati tastaturu */
+  .pretraga { position: fixed; left: 0; right: 0; top: 0; z-index: 21; height: 100dvh; background: var(--pozadina);
+    display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px 10px; animation: gore .35s var(--glatko) both; }
+  .pretraga.izlazi { animation: bledi .2s ease-out both; pointer-events: none; }
+  @keyframes bledi { to { opacity: 0; } }
+  .pretraga::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 100vh; background: var(--pozadina); }
+  html.trazi #ekran-rad { visibility: hidden; }
+  @keyframes gore { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes dole { to { transform: translateY(40px); opacity: 0; } }
+  .pretraga > * { width: 100%; max-width: 560px; margin-left: auto; margin-right: auto; }
+  .pretraga .vrh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .pretraga .vrh h2 { margin: 0; font-size: 22px; font-weight: 800; }
+  .pretraga .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
+  .pretraga .zatvori svg { width: 22px; height: 22px; }
+  .pretraga .polje { position: relative; }
+  .pretraga .polje svg { position: absolute; left: 16px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); color: var(--tekst2); pointer-events: none; }
+  .pretraga input { width: 100%; font-size: 18px; padding: 15px 16px 15px 50px; border-radius: 14px; -webkit-appearance: none; appearance: none; border: 2px solid var(--linija);
+    background: var(--povrs); color: var(--tekst); outline: none; transition: border-color .2s, box-shadow .2s; }
+  .pretraga input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px var(--prsten); }
+  .pretraga input::placeholder { color: var(--tekst2); }
+  .pretraga ul { list-style: none; margin: 10px auto 0; padding: 0 0 calc(var(--dno) + 10px); overflow-y: auto; flex: 1; min-height: 0;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .pretraga li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 4px;
+    border-bottom: 1px solid var(--linija); animation: ulaz .3s var(--glatko) both; }
+  .pretraga .ko { font-size: 17px; font-weight: 700; }
+  .pretraga .sta { font-size: 13px; color: var(--tekst2); margin-top: 3px; }
+  .pretraga li button { padding: 12px 16px; border-radius: 12px; background: var(--ok); color: var(--na-boji); font-weight: 800; white-space: nowrap; }
+  .pretraga .usao { color: var(--tekst2); font-weight: 700; font-size: 14px; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); }
+  .pretraga .napomena { color: var(--tekst2); justify-content: center; padding: 28px 0; font-size: 15px; border: 0; }
+
+  /* Prozor: potvrda odjave i greške pri prijavi */
+  .prozor { position: fixed; inset: 0; z-index: 40; display: flex; align-items: center; justify-content: center; padding: 24px 18px;
+    background: rgba(40, 0, 20, .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); animation: providno .2s ease-out both; }
+  .prozor.izlazi { animation: providno .18s ease-in reverse both; }
+  @keyframes providno { from { opacity: 0; } to { opacity: 1; } }
+  .prozor-kartica { width: 100%; max-width: 400px; background: var(--povrs); color: var(--tekst); border-radius: 24px; padding: 24px 20px 18px;
+    text-align: center; box-shadow: 0 20px 50px rgba(40, 0, 20, .35); animation: iskoci .4s var(--opruga) both; }
+  .prozor-ikona { width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; display: grid; place-items: center; background: var(--pozadina); color: var(--akcent); }
+  @media (prefers-color-scheme: dark) { .prozor-ikona { color: var(--tekst); } }
+  .prozor-ikona svg { width: 34px; height: 34px; }
+  .prozor h3 { margin: 0 0 8px; font-size: 22px; }
+  .prozor-tekst { font-size: 16px; line-height: 1.5; color: var(--tekst2); }
+  .prozor-tekst b { color: var(--tekst); }
+  .prozor-tekst .mejl { display: inline-block; margin: 8px 0 2px; padding: 6px 12px; border-radius: 10px; background: var(--pozadina); color: var(--tekst); font-weight: 600; overflow-wrap: anywhere; }
+  .prozor-dugmad { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+  .prozor-dugmad .dugme { min-height: 54px; box-shadow: none; }
+  .prozor-dugmad .dugme.obicno { background: var(--pozadina); }
+  .prozor-dugmad:empty { display: none; }
+  .prozor-tekst .ime-gosta { display: inline-block; margin-bottom: 4px; font-family: var(--naslovni); font-size: 24px; font-weight: 800; line-height: 1.15; color: var(--tekst); }
+  .prozor-kartica.ok .prozor-ikona { background: var(--ok); color: #fff; animation: iskoci .45s var(--opruga) both; }
+  .prozor-kartica.ok .prozor-ikona .potez, .prozor-kartica.lose .prozor-ikona .potez { stroke-dasharray: 30; stroke-dashoffset: 30; animation: crtaj .4s ease-out .15s forwards; }
+  .prozor-kartica.lose .prozor-ikona { background: var(--lose); color: #fff; animation: iskoci .45s var(--opruga) both; }
+
+
+  /* Gore: Stiglo X od Y je dugme koje otvara salu */
+  button.napredak { width: 100%; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: var(--povrs); box-shadow: var(--senka); text-align: left; }
+  .napredak .broj { font-size: 20px; }
+  .napredak .broj b { font-size: 26px; }
+  .sala-dugme { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--akcent); font-size: 16px; }
+  .sala-dugme svg { width: 22px; height: 22px; }
+
+  /* Sala preko celog ekrana: mapa (zum i pomeranje prstima) i spiskovi */
+  .sala { position: fixed; inset: 0; z-index: 22; background: var(--pozadina); display: flex; flex-direction: column; gap: 10px;
+    padding: calc(var(--vrh) + 12px) 12px calc(var(--dno) + 10px); animation: gore .35s var(--glatko) both; }
+  .sala.izlazi { animation: bledi .2s ease-out both; pointer-events: none; }
+  html.sala-otvorena #ekran-rad { visibility: hidden; }
+  .sala > * { width: 100%; max-width: 760px; margin-left: auto; margin-right: auto; }
+  .sala-vrh { display: flex; align-items: center; gap: 12px; }
+  .sala-vrh h2 { margin: 0; font-size: 22px; font-weight: 800; }
+  .sala-vrh .osvezeno { font-size: 13px; color: var(--tekst2); }
+  .sala-vrh .zatvori { width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
+  .sala-vrh .zatvori svg { width: 22px; height: 22px; }
+  .sala-brojevi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sala-brojevi div { background: var(--povrs); border-radius: 14px; padding: 8px 12px; font-size: 13px; color: var(--tekst2); line-height: 1.45; }
+  .sala-brojevi b { display: block; font-family: var(--naslovni); font-size: 15px; color: var(--tekst); }
+  .sala-brojevi i { font-style: normal; font-weight: 800; color: var(--tekst); }
+  .mapa { position: relative; flex: 1 1 52%; min-height: 180px; border-radius: 16px; background: var(--povrs); overflow: hidden; touch-action: none; }
+  .mapa svg { width: 100%; height: 100%; display: block; }
+  .mapa-alati { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .mapa-alati button { width: 40px; height: 40px; border-radius: 12px; background: var(--pozadina); color: var(--tekst); font-size: 22px; font-weight: 700; line-height: 1; box-shadow: var(--senka); }
+  .mapa text { font-family: var(--telo); fill: var(--tekst); pointer-events: none; }
+  .mapa .oznaka { font-size: 20px; font-weight: 700; }
+  .mapa .naslov-dela { font: 700 30px var(--naslovni); }
+  .mapa .bina { fill: var(--akcent); }
+  .mapa .bina-t { fill: var(--na-akcentu); font: 700 26px var(--naslovni); letter-spacing: .3em; }
+  .mapa .ulaz { font-size: 20px; font-weight: 700; fill: var(--akcent); }
+  .mapa .br { font-size: 11px; font-weight: 700; }
+  .mapa circle { stroke-width: 2.5; }
+  .m-slobodno { fill: transparent; stroke: var(--tekst2); stroke-opacity: .55; }
+  .m-ceka { fill: var(--povrs2); stroke: none; }
+  .m-cuva { fill: var(--povrs2); stroke: var(--upozorenje); stroke-dasharray: 4 3; }
+  .m-moze { fill: #e8c27a; stroke: none; }   /* Naples Yellow: posle 18:15 gost nije stigao */
+  .m-stigao { fill: var(--ok); stroke: none; }
+  .m-rez { fill: var(--tekst2); fill-opacity: .4; stroke: none; }
+  .m-tudje { fill: transparent; stroke: var(--upozorenje); stroke-width: 4 !important; stroke-dasharray: 5 3; }
+  .m-moje { fill: var(--akcent); stroke: var(--tekst); stroke-width: 3 !important; }
+  .mapa .br.na-boji { fill: #fff; }
+  .mapa .br.na-moje { fill: var(--na-akcentu); }
+  .legenda { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: var(--tekst2); }
+  .legenda span { display: inline-flex; align-items: center; gap: 5px; }
+  .legenda svg { width: 14px; height: 14px; }
+  .sala-panel { flex: 1 1 40%; min-height: 0; display: flex; flex-direction: column; background: var(--povrs); border-radius: 16px; overflow: hidden; }
+  .jezici { display: flex; gap: 4px; padding: 6px; border-bottom: 1px solid var(--linija); }
+  .jezici button { flex: 1; padding: 9px 4px; border-radius: 10px; font-size: 14px; font-weight: 700; color: var(--tekst2); background: transparent; }
+  .jezici button.aktivan { background: var(--pozadina); color: var(--tekst); }
+  .sala-lista { list-style: none; margin: 0; padding: 0 12px 8px; overflow-y: auto; flex: 1; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .sala-lista li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 2px; border-bottom: 1px solid var(--linija); font-size: 15px; }
+  .sala-lista li.grupa { font-weight: 800; font-size: 13px; letter-spacing: .04em; color: var(--tekst2); text-transform: uppercase; padding-top: 14px; border: 0; }
+  .sala-lista .sitno, .izbor .sitno { font-size: 13px; color: var(--tekst2); font-weight: 500; }
+  .sala-lista .oznaka-mesta { font-family: var(--naslovni); font-weight: 700; white-space: nowrap; }
+  .sala-lista button, .izbor button.malo { padding: 9px 14px; border-radius: 12px; background: var(--akcent); color: var(--na-akcentu); font-weight: 800; font-size: 14px; white-space: nowrap; }
+  .sala-lista .prazno-lista { justify-content: center; color: var(--tekst2); border: 0; padding: 22px 0; }
+  .izbor { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+  .izbor .zaglavlje { padding: 12px 14px 4px; font-weight: 800; font-size: 17px; }
+  .izbor .zaglavlje .sitno { display: block; font-weight: 500; font-size: 13px; color: var(--tekst2); margin-top: 2px; }
+  .izbor .mesta { list-style: none; margin: 0; padding: 0 14px; overflow-y: auto; flex: 1; }
+  .izbor .mesta li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--linija); }
+  .izbor .mesta .ko { font-weight: 700; }
+  .izbor .mesta .ko.prazno { color: var(--tekst2); font-weight: 500; }
+  .izbor .mesta button.ukloni { width: 36px; height: 36px; border-radius: 50%; background: var(--pozadina); display: grid; place-items: center; flex: none; }
+  .izbor .mesta button.ukloni svg { width: 18px; height: 18px; }
+  .izbor .akcije { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; padding: 10px 14px 12px; }
+  .izbor .akcije .dugme { min-height: 50px; }
+  .sala-poruka { position: absolute; left: 50%; top: calc(var(--vrh) + 70px); transform: translateX(-50%); z-index: 3; max-width: 90%; padding: 10px 16px; border-radius: 12px;
+    background: var(--tekst); color: var(--pozadina); font-weight: 700; font-size: 14px; box-shadow: 0 8px 24px rgba(40,0,20,.3); animation: gore .3s var(--glatko) both; }
+  .ceka-gost { padding: 8px 12px; border-radius: 12px; background: var(--akcent); color: var(--na-akcentu); font-weight: 700; font-size: 14px; }
+  /* Izbor gosta za mesto: preko sale, kao pretraga */
+  .birac { position: fixed; left: 0; right: 0; top: 0; z-index: 23; height: 100dvh; background: var(--pozadina); display: flex; flex-direction: column;
+    padding: calc(var(--vrh) + 14px) 16px 10px; animation: gore .3s var(--glatko) both; }
+  .birac > * { width: 100%; max-width: 560px; margin-left: auto; margin-right: auto; }
+  /* Mesto gosta na zelenom ekranu posle skeniranja */
+  .rezultat .mesto-gosta { margin-top: 6px; padding: 12px 18px; border-radius: 16px; background: rgba(255,255,255,.18); font-size: 20px; font-weight: 700; line-height: 1.35; animation: ulaz .4s var(--glatko) .3s both; }
+  .rezultat .mesto-gosta b { font-family: var(--naslovni); font-size: 28px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    .kamera .nisan { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<!-- Ikonice: Tabler Icons (MIT) -->
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-kamera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2"/><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></symbol>
+  <symbol id="i-trazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0"/><path d="M21 21l-6 -6"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path class="potez" d="M9 12l2 2l4 -4"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/><path class="potez" d="M10 10l4 4m0 -4l-4 4"/></symbol>
+  <symbol id="i-pazi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-dodir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13v-7.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M11 5.5v-2a1.5 1.5 0 1 1 3 0v8.5"/><path d="M14 5.5a1.5 1.5 0 0 1 3 0v6.5"/><path d="M17 7.5a1.5 1.5 0 0 1 3 0v8.5a6 6 0 0 1 -6 6h-2h.208a6 6 0 0 1 -5.012 -2.7a69.74 69.74 0 0 1 -.196 -.3c-.312 -.479 -1.407 -2.388 -3.286 -5.728a1.5 1.5 0 0 1 .536 -2.022a1.867 1.867 0 0 1 2.28 .28l1.47 1.47"/></symbol>
+  <symbol id="i-odjava" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M9 12h12l-3 -3"/><path d="M18 15l3 -3"/></symbol>
+  <symbol id="i-korisnik" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></symbol>
+  <symbol id="i-sala" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11a2 2 0 0 1 2 2v2h10v-2a2 2 0 1 1 4 0v4a1 1 0 0 1 -1 1h-18a1 1 0 0 1 -1 -1v-4a2 2 0 0 1 2 -2z"/><path d="M5 11v-5a3 3 0 0 1 3 -3h8a3 3 0 0 1 3 3v5"/><path d="M6 19v1"/><path d="M18 19v1"/></symbol>
+  <symbol id="i-desno" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6l-6 6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-zatvori" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></symbol>
+</svg>
+
+<div class="ekran" id="ekran-ucitava"><span class="vrti"></span>Učitavam…</div>
+<div class="ekran" id="ekran-prijava">
+  <div class="prijava">
+    <div class="naslovna">
+      <img class="logo" src="ikona-192.png" alt="">
+      <div><h2>Dodela zahvalnica</h2><div class="podnaslov">Prijava skenera · nova prijava</div></div>
+    </div>
+    <div class="vodic" id="vodic">
+      <div class="vrh-vodica"><h2>Uputstvo za prijavu</h2><button class="zatvori" id="zatvori-vodic" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button></div>
+      <div class="koraci" id="koraci">
+        <div class="vrpca" id="vrpca">
+
+          <div class="korak"><div class="kartica">
+              <div class="oznaka">KORAK 1 OD 4</div>
+              <h3>Izaberite nalog</h3>
+              <div class="crtez tamni">
+                <div class="g"><b>G</b> Sign in with Google</div>
+                <div class="velik">Choose an account</div>
+                <div class="nalog dodir"><span class="avatar" style="background:#1a7444">M</span><div>Marko Marković<small>marko.markovic@gmail.com</small></div></div>
+                <div class="nalog"><span class="avatar" style="background:#a62c37">J</span><div>Jelena Petrović<small>jelena.petrovic@gmail.com</small></div></div>
+              </div>
+              <p>Posle <b>Prijavite se</b> izaberite Gmail nalog sa kojim je štab podelio tabelu gostiju.</p>
+          </div></div>
+
+          <div class="korak"><div class="kartica">
+              <div class="oznaka">KORAK 2 OD 4</div>
+              <h3>Continue</h3>
+              <div class="crtez tamni">
+                <div class="velik">Sign in to aleksinacuzstudente.github.io</div>
+                <div class="nalog"><span class="avatar" style="background:#1a7444">M</span><div>Marko Marković<small>marko.markovic@gmail.com</small></div></div>
+                <div class="red"><span class="okvir-dugme">Cancel</span><span class="okvir-dugme dodir">Continue</span></div>
+              </div>
+              <p>Google pita da li stranica sme da vidi vaš mejl. Dodirnite <b>Continue</b>. Stranica vidi samo mejl, da se u tabeli zna ko je upisao gosta. Ako piše <b>You're signing back in</b>, isto <b>Continue</b>.</p>
+          </div></div>
+
+          <div class="korak"><div class="kartica">
+              <div class="oznaka">KORAK 3 OD 4</div>
+              <h3>Dozvolite kameru</h3>
+              <div class="crtez" style="background:#1f2a3d">
+                <div class="ios"><div>“aleksinacuzstudente.github.io” Would Like to Access the Camera</div>
+                  <div class="dugmici"><span>Don't Allow</span><span class="dodir">Allow</span></div></div>
+              </div>
+              <p>Dodirnite kvadrat <b>Dodirnite za skeniranje</b> i dozvolite kameru (<b>Allow</b>).</p>
+          </div></div>
+
+          <div class="korak"><div class="kartica">
+              <div class="oznaka">KORAK 4 OD 4</div>
+              <h3>Skenirajte goste</h3>
+              <div class="crtez zeleno">
+                <svg><use href="#i-ok"/></svg>
+                <div class="velik">UPISAN</div>
+                <div>Marko Marković</div>
+              </div>
+              <p>Usmerite kameru na QR gosta. <b>Zeleno</b>: upisan. <b>Crveno</b>: već je ušao. Dodirnite bilo gde za nastavak. Gost bez QR-a: <b>Pretraga</b>.</p>
+          </div></div>
+
+        </div>
+      </div>
+      <div class="tacke" id="tacke"></div>
+      <div class="navigacija">
+        <button class="dugme" id="nazad">Nazad</button>
+        <button class="dugme" id="dalje">Dalje</button>
+      </div>
+    </div>
+    <div class="kratka">
+      <p>Prijavite se Gmail nalogom sa kojim je štab podelio tabelu gostiju.</p>
+      <button class="dugme glavno" id="prijava-kratko">Prijavite se</button>
+      <button class="dugme" id="otvori-vodic">Uputstvo za prijavu</button>
+    </div>
+    <p class="poruka" id="prijava-poruka"></p>
+  </div>
+</div>
+
+<div class="ekran skriveno" id="ekran-rad">
+  <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
+  <button class="napredak" id="otvori-salu" aria-label="Sala: ko je stigao i slobodna mesta">
+    <div class="broj">Stiglo <b id="stiglo">…</b> <span id="od">od …</span> <span class="ceka skriveno" id="ceka"></span></div>
+    <span class="sala-dugme"><svg><use href="#i-sala"/></svg>Sala<svg><use href="#i-desno"/></svg></span>
+  </button>
+  <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
+  <div class="kamera" id="kamera">
+    <video id="video" playsinline muted></video>
+    <div class="nisan"><i></i><div class="linija skriveno" id="linija"></div></div>
+    <div class="status" id="status">Usmerite kameru na QR kod</div>
+    <div class="upis skriveno" id="upis"><span class="vrti"></span><div class="upis-ime" id="upis-ime"></div><div class="upis-tekst">Upisujem…</div></div>
+    <button class="pokreni" id="pokreni"><svg><use href="#i-kamera"/></svg>Dodirnite za skeniranje</button>
+    <div class="rezerva skriveno" id="rezerva">
+      <svg><use href="#i-pazi"/></svg>
+      <h3>Kamera ne može da se uključi</h3>
+      <p id="rezerva-razlog">Dozvolite kameru u podešavanjima pregledača. Do tada QR kod možete da slikate.</p>
+      <label class="dugme glavno" for="slika"><svg><use href="#i-kamera"/></svg>Slikaj QR kod</label>
+      <button class="dugme sporedno" id="ponovo">Pokušaj ponovo kameru</button>
+    </div>
+    <input id="slika" class="skriveno" type="file" accept="image/*" capture="environment">
+  </div>
+  <div class="dugmad">
+    <button class="dugme" id="otvori-pretragu"><svg><use href="#i-trazi"/></svg>Pretraži</button>
+    <button class="dugme" id="otvori-dodaj"><svg><use href="#i-plus"/></svg>Dodaj</button>
+  </div>
+</div>
+
+<div class="pretraga skriveno" id="pretraga" role="dialog" aria-label="Pretraga gostiju">
+  <div class="vrh">
+    <h2>Pretraga gosta</h2>
+    <button class="zatvori" id="zatvori-pretragu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button>
+  </div>
+  <div class="polje">
+    <svg><use href="#i-trazi"/></svg>
+    <input id="q" name="pretraga-gosta" type="search" inputmode="search" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      enterkeyhint="search" placeholder="Ime, prezime, broj gosta…" aria-label="Pretraga gosta">
+  </div>
+  <ul id="lista"></ul>
+</div>
+
+<div class="pretraga osoba skriveno" id="osoba" role="dialog" aria-label="Dolazak">
+  <div class="vrh">
+    <h2 id="osoba-naslov">Dolazak</h2>
+    <button class="zatvori" id="zatvori-osobu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button>
+  </div>
+  <div class="osoba-telo" id="osoba-telo"></div>
+  <div class="osoba-dno" id="osoba-dno"></div>
+</div>
+
+<div class="sala skriveno" id="sala" role="dialog" aria-label="Sala">
+  <div class="sala-vrh">
+    <button class="zatvori" id="zatvori-salu" aria-label="Nazad"><svg><use href="#i-zatvori"/></svg></button>
+    <div><h2>Sala</h2><div class="osvezeno" id="sala-osvezeno"></div></div>
+  </div>
+  <div class="sala-brojevi" id="sala-brojevi"></div>
+  <div class="ceka-gost skriveno" id="ceka-gost"></div>
+  <div class="mapa" id="mapa">
+    <svg id="mapa-svg"><g id="mapa-g"></g></svg>
+    <div class="mapa-alati"><button id="mapa-plus" aria-label="Uvećaj">+</button><button id="mapa-minus" aria-label="Umanji">−</button><button id="mapa-cela" aria-label="Cela sala">⤢</button></div>
+  </div>
+  <div class="legenda" id="legenda"></div>
+  <div class="sala-panel" id="sala-panel"></div>
+  <div class="sala-poruka skriveno" id="sala-poruka"></div>
+</div>
+
+<div class="birac skriveno" id="birac" role="dialog" aria-label="Izbor gosta">
+  <div class="vrh" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+    <h2 id="birac-naslov" style="margin:0;font-size:20px;font-weight:800"></h2>
+    <button class="zatvori" id="zatvori-birac" aria-label="Zatvori" style="width:44px;height:44px;border-radius:50%;background:var(--povrs);display:grid;place-items:center"><svg style="width:22px;height:22px"><use href="#i-zatvori"/></svg></button>
+  </div>
+  <div class="polje" style="position:relative">
+    <input id="bq" type="search" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" enterkeyhint="search"
+      placeholder="Ime i prezime ili broj gosta" aria-label="Gost" style="width:100%;font-size:18px;padding:15px 16px;border-radius:14px;-webkit-appearance:none;appearance:none;border:2px solid var(--linija);background:var(--povrs);color:var(--tekst);outline:none">
+  </div>
+  <ul class="sala-lista" id="bl" style="padding:0 2px"></ul>
+</div>
+
+<div class="rezultat skriveno" id="rezultat" role="alert"></div>
+<div class="prozor skriveno" id="prozor" role="dialog" aria-modal="true" aria-labelledby="prozor-naslov">
+  <div class="prozor-kartica">
+    <div class="prozor-ikona" id="prozor-ikona"></div>
+    <h3 id="prozor-naslov"></h3>
+    <div class="prozor-tekst" id="prozor-tekst"></div>
+    <div class="prozor-dugmad" id="prozor-dugmad"></div>
+  </div>
+</div>
+<div class="dno-safari"></div>
+<div class="vrh-safari"></div>
+<canvas id="platno" class="skriveno"></canvas>
+
+<script>
+  const CLIENT_ID = '908081565472-pj7sujfd1tsjrquu9aibvduc20trc7cj.apps.googleusercontent.com';
+  // Nova prijava: Google daje samo mejl skenera (bez dozvole za tabele, pa bez upozorenja „unverified“).
+  // Čitanje i upis radi Apps Script (scripts/zahvalnice/server) kao vlasnik tabele, a proverava da je skener urednik.
+  const SERVER = 'https://script.google.com/macros/s/AKfycbxS0Yg3IuKoIsEtb6NN7RxHoa3wtHu02Pzms352MdfJn0iRzdNTjfVuOCzQiUBM60u70A/exec';
+  const DOZVOLE = ['https://www.googleapis.com/auth/userinfo.email'];
+  const OVDE = location.origin + location.pathname.replace(/index\.html$/, '');
+  // Na početnom ekranu (PWA) Google-ov prozor za prijavu ume da ne vrati prijavu, pa se tamo prijava radi preusmeravanjem.
+  const PWA = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const ime = (g) => esc(g.ime + ' ' + g.prezime);
+  const cuvaj = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const citaj = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
+
+  // iPhone ne poštuje maximum-scale za štipanje, pa se štipanje ovde zaustavlja.
+  ['gesturestart', 'gesturechange'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+  let kodIzUrla = new URLSearchParams(location.search).get('k');
+
+  // ---------- Prijava ----------
+  let token = null, tokenDo = 0, mejl = '', klijent = null, cekaju = [];
+  const sacuvan = citaj('nova-token');
+  if (sacuvan && sacuvan.do > Date.now() + 60000) { token = sacuvan.token; tokenDo = sacuvan.do; mejl = sacuvan.mejl || ''; }
+  else mejl = (sacuvan && sacuvan.mejl) || '';
+
+  async function primiToken(pristup, traje, odobreno) {
+    if (!DOZVOLE.every((d) => (odobreno || '').split(' ').includes(d))) throw greska('dozvole');
+    token = pristup; tokenDo = Date.now() + (Number(traje) - 60) * 1000;
+    try { mejl = (await (await fetch('https://www.googleapis.com/oauth2/v3/userinfo', { headers: { Authorization: 'Bearer ' + token } })).json()).email || mejl; } catch (e) {}
+    cuvaj('nova-token', { token, do: tokenDo, mejl });
+    return token;
+  }
+
+  function greska(kod, detalj) { const e = new Error(kod + (detalj ? ' (' + detalj + ')' : '')); e.kod = kod; return e; }
+
+  // Povratak sa Google-a posle prijave preusmeravanjem (#access_token=…)
+  const povratak = new URLSearchParams(location.hash.slice(1));
+  let povratakObrada = null;
+  if (povratak.get('access_token') || povratak.get('error')) {
+    document.documentElement.classList.add('ucitava');  // povratak sa Google-a: „Učitavam…“ dok ne stignu gosti
+    const st = citaj('nova-stanje') || {};
+    history.replaceState(null, '', OVDE);
+    if (st.kod) kodIzUrla = st.kod;
+    cuvaj('nova-stanje', null);
+    povratakObrada = povratak.get('state') !== st.state ? Promise.reject(greska('neuspelo', 'state'))
+      : povratak.get('error') ? Promise.reject(greska(povratak.get('error') === 'access_denied' ? 'odbijeno' : 'neuspelo', povratak.get('error')))
+      : primiToken(povratak.get('access_token'), povratak.get('expires_in'), povratak.get('scope'));
+  }
+
+  function prijavaPreusmeravanjem(prompt) {
+    const state = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    cuvaj('nova-stanje', { state, kod: kodIzUrla });
+    const p = new URLSearchParams({ client_id: CLIENT_ID, redirect_uri: OVDE, response_type: 'token', scope: DOZVOLE.join(' '),
+      include_granted_scopes: 'false', state, prompt: prompt || 'select_account' });
+    if (mejl) p.set('login_hint', mejl);
+    location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
+    return new Promise(() => {});
+  }
+  function napraviKlijenta() {
+    if (klijent || !window.google || !google.accounts) return klijent;
+    klijent = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID, scope: DOZVOLE.join(' '),
+      callback: (odg) => {
+        const c = cekaju; cekaju = [];
+        if (odg.error) return c.forEach(([, ne]) => ne(greska(odg.error === 'access_denied' ? 'odbijeno' : 'neuspelo', odg.error)));
+        primiToken(odg.access_token, odg.expires_in, odg.scope).then((t) => c.forEach(([da]) => da(t)), (e) => c.forEach(([, ne]) => ne(e)));
+      },
+      error_callback: (e) => {
+        const c = cekaju; cekaju = [];
+        const kod = { popup_closed: 'prekinuto', popup_failed_to_open: 'blokirano' }[e.type] || 'neuspelo';
+        c.forEach(([, ne]) => ne(greska(kod, e.type)));
+      },
+    });
+    return klijent;
+  }
+  function traziToken(prompt) {
+    if (PWA) return prijavaPreusmeravanjem(prompt);
+    return new Promise((da, ne) => {
+      if (!napraviKlijenta()) return ne(greska('ucitava'));
+      cekaju.push([da, ne]);
+      klijent.requestAccessToken({ prompt, hint: mejl || undefined });
+    });
+  }
+  async function tokenSad() {
+    if (token && Date.now() < tokenDo) return token;
+    const e = new Error('Prijava je istekla.'); e.istekla = true; throw e;
+  }
+  // Obnova prijave na dodir (Safari dozvoljava Google prozor samo posle dodira).
+  function produzi() {
+    $('istice').classList.add('skriveno');
+    return traziToken('').then(() => ucitaj()).then(() => { $('nalog').textContent = mejl; posalji(); });
+  }
+  setInterval(() => {
+    const ostalo = tokenDo - Date.now();
+    if (!$('ekran-rad').classList.contains('skriveno') || document.documentElement.classList.contains('ucitava'))
+      $('istice').classList.toggle('skriveno', !(token && ostalo < 5 * 60000));
+  }, 15000);
+
+  // ---------- Tabela ----------
+  // text/plain: bez CORS provere unapred, Apps Script je inače ne podržava.
+  async function server(akcija, podaci) {
+    const t = await tokenSad();
+    let r;
+    try {
+      r = await fetch(SERVER, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(Object.assign({ akcija, token: t }, podaci || {})) });
+    } catch (e) { throw greska('server', navigator.onLine === false ? 'nema interneta' : 'nema odgovora'); }
+    if (!r.ok) throw greska('server', 'greška ' + r.status);
+    let o;
+    try { o = await r.json(); } catch (e) { throw new Error('Server nije odgovorio kako treba.'); }
+    if (o.greska === 'prijava') { token = null; tokenDo = 0; cuvaj('nova-token', { mejl }); const e = new Error('Prijava je istekla.'); e.istekla = true; throw e; }
+    if (o.greska === 'pristup') { const e = new Error('PRISTUP'); e.pristup = true; throw e; }
+    if (o.greska) throw new Error(o.poruka || o.greska);
+    // Server posle Google prijave daje svoju propusnicu na 24 sata (Google važi sat), pa se dalje šalje ona.
+    if (o.sesija) { token = o.sesija; tokenDo = Date.now() + (Number(o.sesijaTraje) - 60) * 1000; mejl = o.mejl || mejl; cuvaj('nova-token', { token, do: tokenDo, mejl }); }
+    return o;
+  }
+
+  let gosti = [], k = {}, prethodno = -1;
+  async function ucitaj() { const o = await server('citaj'); primiSalu(o); primi(o.values); }
+  function primi(v) {
+    v = v || [];
+    k = {}; (v[0] || []).forEach((h, i) => (k[h] = i));
+    gosti = v.slice(1).map((r, i) => ({
+      red: i + 2, broj: r[k.Broj] || '', kod: String(r[k.Kod] || '').trim().toUpperCase(), ime: r[k.Ime] || '', prezime: r[k.Prezime] || '',
+      telefon: r[k.Telefon] || '', uloga: r[k.Uloga] || '', stigao: r[k.Stigao] || '', vreme: r[k.Vreme] || '', upisao: r[k.Upisao] || '',
+      potvrdio: r[k.Potvrdio] || '', napomena: r[k.Napomena] || '', grupa: r[k.Grupa] || '',
+      deo: r[k.Deo] || '', redSale: r[k.Red] || '', mesto: r[k.Mesto] || '', ulaz: r[k.Ulaz] || '', gostOd: r[k['Gost od']] || '',
+    })).filter((g) => g.broj);
+    cekaUpis.forEach((p) => {
+      const g = gosti.find((x) => x.kod === p.kod);
+      if (g && !g.stigao) Object.assign(g, { stigao: 'DA', vreme: p.vreme, upisao: mejl });
+    });
+    stanje();
+  }
+  function stanje() {
+    const s = gosti.filter((g) => g.stigao).length, b = $('stiglo');
+    if (s !== prethodno && prethodno >= 0) { b.classList.remove('skok'); void b.offsetWidth; b.classList.add('skok'); }
+    prethodno = s;
+    b.textContent = s;
+    $('od').textContent = 'od ' + gosti.filter((g) => g.potvrdio || g.mesto).length;
+    if (!$('sala').classList.contains('skriveno')) crtajSalu();
+  }
+
+  // Upis: uvek sveže čitanje tabele pre upisa (drugi skener je možda upravo upisao istog gosta).
+  let salje = false;
+  // Server pod zaključavanjem čita tabelu, upisuje i vraća je celu, pa dva skenera ne upišu istog gosta dvaput.
+  async function upisiGosta(po, vrednost) {
+    try {
+      const o = await server('upisi', { po, vrednost });
+      primi(o.values);
+      const g = gosti.find((x) => x.red === o.red);
+      if (o.status === 'nema' || !g) return { status: 'nema', trazeno: vrednost };
+      return { status: o.status, gost: g };
+    } catch (e) {
+      return e.istekla ? { status: 'istekla' } : e.pristup ? { status: 'pristup' } : { status: 'greska', poruka: e.message };
+    }
+  }
+  // Kamera: odluka odmah po spisku na telefonu (već ušao ili upisan), a server upisuje u pozadini, redom.
+  // Upisi koji čekaju čuvaju se na telefonu, pa ne nestaju ni kad se stranica osveži ili nestane interneta.
+  // Server pod zaključavanjem javlja ako je drugi skener istog gosta upisao pre nas; tada se pokaže upozorenje.
+  function ucitajRed() { try { return JSON.parse(localStorage.getItem('nova-red') || '[]'); } catch (e) { return []; } }
+  let cekaUpis = ucitajRed(), saljeRed = false, nemaVeze = false, tajmerReda = null, upozorenja = [];
+  function sacuvajRed() { try { localStorage.setItem('nova-red', JSON.stringify(cekaUpis)); } catch (e) {} }
+  function sat() { return new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Belgrade' }); }
+  function osveziRed() {
+    // Vidi se samo kad server ne odgovara; inače se upis pošalje za sekundu-dve i natpis bi samo treptao.
+    const el = $('ceka'), n = nemaVeze ? cekaUpis.length : 0;
+    el.classList.toggle('skriveno', !n);
+    el.classList.add('nema-veze');
+    el.textContent = n ? '· nema veze, ' + n + ' čeka slanje' : '';
+  }
+  async function posalji() {
+    if (saljeRed || !cekaUpis.length) return osveziRed();
+    saljeRed = true; clearTimeout(tajmerReda);
+    const p = cekaUpis[0];
+    let o;
+    try { o = await server('upisi', { po: 'kod', vrednost: p.kod }); }
+    catch (e) {
+      saljeRed = false;
+      if (e.istekla) { $('istice').classList.remove('skriveno'); return osveziRed(); }
+      nemaVeze = true; osveziRed();
+      tajmerReda = setTimeout(posalji, 3000);
+      return;
+    }
+    nemaVeze = false;
+    cekaUpis.shift(); sacuvajRed(); osveziRed();
+    primi(o.values);
+    const g = gosti.find((x) => x.red === o.red);
+    if (o.status === 'vec' && g && g.upisao !== mejl) upozorenja.push({ status: 'sukob', gost: g });
+    if (o.status === 'nema') upozorenja.push({ status: 'nema', trazeno: p.kod });
+    saljeRed = false;
+    sledeceUpozorenje();
+    posalji();
+  }
+  function sledeceUpozorenje() {
+    if (upozorenja.length && !rezultatOtvoren && !salje) prikazi(upozorenja.shift());
+  }
+  function upisi(po, vrednost) {
+    if (salje) return;
+    salje = true;
+    const g = gosti.find((x) => x.kod === vrednost);
+    $('upis-ime').innerHTML = g ? ime(g) : '';
+    $('upis').querySelector('.upis-tekst').textContent = g ? 'Proveravam…' : 'Kod pročitan, proveravam…';
+    $('upis').classList.remove('skriveno');
+    $('kamera').classList.add('cita');
+    const gotovo = () => {
+      $('upis').classList.add('skriveno');
+      $('kamera').classList.remove('cita');
+      salje = false;
+    };
+    if (!g) {
+      // Kod koji telefon ne zna: možda je gost dodat posle učitavanja, pa pita server.
+      upisiGosta(po, vrednost).then((r) => { gotovo(); prikazi(r); });
+      return;
+    }
+    setTimeout(() => {
+      gotovo();
+      if (g.stigao) return prikazi({ status: 'vec', gost: g });
+      Object.assign(g, { stigao: 'DA', vreme: sat(), upisao: mejl });
+      cekaUpis.push({ kod: g.kod, vreme: g.vreme }); sacuvajRed();
+      stanje();
+      prikazi({ status: 'ok', gost: g });
+      posalji();
+    }, 350);
+  }
+
+  // ---------- Rezultat ----------
+  // Boja trake pri vrhu i dnu (i theme-color za starije iPhone-e): boja rezultata dok je otvoren, inače boja ekrana.
+  const temaMeta = [...document.querySelectorAll('meta[name="theme-color"]')].map((m) => [m, m.content]);
+  function boja(klasa) {
+    const html = document.documentElement;
+    if (klasa) html.style.setProperty('--traka', 'var(--' + klasa + ')'); else html.style.removeProperty('--traka');
+    const vrednost = klasa ? getComputedStyle(html).getPropertyValue('--' + klasa).trim() : '';
+    temaMeta.forEach(([m, staro]) => (m.content = vrednost || staro));
+  }
+  let zvuk, tajmerRezultata = null, rezultatOtvoren = false;
+  function ton(ok) {
+    try {
+      zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)();
+      const tonovi = ok ? [[660, 0, 0.09], [990, 0.09, 0.14]] : [[220, 0, 0.18], [220, 0.25, 0.18]];
+      tonovi.forEach(([f, od, traje]) => {
+        const o = zvuk.createOscillator(), g = zvuk.createGain();
+        o.frequency.value = f; o.connect(g); g.connect(zvuk.destination);
+        g.gain.setValueAtTime(0.25, zvuk.currentTime + od);
+        g.gain.exponentialRampToValueAtTime(0.001, zvuk.currentTime + od + traje);
+        o.start(zvuk.currentTime + od); o.stop(zvuk.currentTime + od + traje);
+      });
+      if (navigator.vibrate) navigator.vibrate(ok ? 80 : [120, 80, 120]);
+    } catch (e) {}
+  }
+  function prikazi(r) {
+    const el = $('rezultat');
+    const ikona = (id) => '<svg><use href="#' + id + '"/></svg>';
+    let klasa = 'lose', html = '';
+    if (r.status === 'ok') {
+      klasa = 'ok';
+      html = ikona('i-ok') + '<div class="naslov">UPISAN</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">' + esc(r.gost.uloga) + ' · broj ' + esc(r.gost.broj) + '</div>'
+        + (r.gost.mesto ? '<div class="mesto-gosta">' + esc(r.gost.deo) + ' · red <b>' + esc(r.gost.redSale) + '</b> · mesto <b>'
+          + esc(r.gost.mesto) + '</b><br>ulaz ' + esc(r.gost.ulaz) + (r.gost.ulaz === '1' ? ' (levo)' : r.gost.ulaz === '2' ? ' (desno)' : '') + '</div>'
+          : '<div class="mesto-gosta">Nema rezervisano mesto</div>');
+    } else if (r.status === 'vec') {
+      html = ikona('i-x') + '<div class="naslov">VEĆ UŠAO</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">u ' + esc(r.gost.vreme) + '<br>upisao ' + esc(r.gost.upisao) + '</div>';
+    } else if (r.status === 'sukob') {
+      html = ikona('i-x') + '<div class="naslov">PAŽNJA: KOD JE UPOTREBLJEN DVAPUT</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">Već je ušao u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '.<br>Javite štabu.</div>';
+    } else if (r.status === 'nema') {
+      klasa = 'upozorenje';
+      html = ikona('i-pazi') + '<div class="naslov">NEMA NA SPISKU</div><div class="detalj">Kod ' + esc(r.trazeno)
+        + ' nije na spisku.<br>Potražite gosta po imenu.</div>';
+    } else if (r.status === 'pristup') {
+      html = ikona('i-x') + '<div class="naslov">NEMATE PRISTUP</div><div class="detalj">Nalog ' + esc(mejl)
+        + ' nema pravo na tabelu gostiju.<br>Javite štabu ovaj mejl.</div>';
+    } else if (r.status === 'istekla') {
+      klasa = 'upozorenje';
+      html = ikona('i-pazi') + '<div class="naslov">PRIJAVA JE ISTEKLA</div><div class="detalj">Gost nije upisan.<br>Dodirnite, potvrdite prijavu, pa skenirajte ponovo.</div>';
+    } else {
+      klasa = 'upozorenje';
+      html = ikona('i-pazi') + '<div class="naslov">NIJE UPISANO</div><div class="detalj">' + esc(r.poruka) + '</div>';
+    }
+    const bezMesta = r.status === 'ok' && !r.gost.mesto;
+    html += klasa === 'ok' && !bezMesta ? '<div class="vreme"></div>' : '<div class="dalje"><svg><use href="#i-dodir"/></svg>'
+      + (r.status === 'istekla' ? 'Dodirnite za ponovnu prijavu' : bezMesta ? 'Dodirnite da dobije mesto' : 'Dodirnite bilo gde za nastavak') + '</div>';
+    el.dataset.status = r.status;
+    el.dataset.bezMesta = bezMesta ? r.gost.broj : '';
+    el.className = 'rezultat ' + klasa;
+    boja(klasa);
+    el.innerHTML = html;
+    rezultatOtvoren = true;
+    ton(klasa === 'ok');
+    clearTimeout(tajmerRezultata);
+    if (klasa === 'ok' && !bezMesta) tajmerRezultata = setTimeout(zatvoriRezultat, 2600);
+  }
+  function zatvoriRezultat() {
+    clearTimeout(tajmerRezultata);
+    const el = $('rezultat');
+    if (!rezultatOtvoren) return;
+    el.classList.add('izlazi');
+    boja(null);
+    setTimeout(() => { el.className = 'rezultat skriveno'; rezultatOtvoren = false; poslednjiU = Date.now(); sledeceUpozorenje(); }, 240);
+  }
+  $('rezultat').addEventListener('click', () => {
+    const istekla = $('rezultat').dataset.status === 'istekla';
+    const bezMesta = $('rezultat').dataset.bezMesta;
+    zatvoriRezultat();
+    if (bezMesta) { const g = gosti.find((x) => x.broj === bezMesta); if (g) otvoriOsobu(g); return; }
+    if (istekla) produzi().catch((e) => prikazi({ status: 'greska', poruka: e.message }));
+  });
+  $('istice').addEventListener('click', () => produzi().catch((e) => prikazi({ status: 'greska', poruka: e.message })));
+
+  // ---------- Kamera ----------
+  let poslednji = '', poslednjiU = 0;
+  // Isti kod se ne čita ponovo dok neprekidno stoji pred kamerom (gost još drži telefon posle zelenog ekrana);
+  // čim ga nema bar sekundu, može ponovo. poslednjiU je kada je taj kod poslednji put viđen.
+  function procitan(tekst) {
+    const m = String(tekst).match(/[?&]k=([A-Za-z0-9]+)/);
+    const kod = (m ? m[1] : String(tekst)).trim().toUpperCase();
+    const sad = Date.now();
+    if (kod === poslednji && sad - poslednjiU < 1000) { poslednjiU = sad; return; }
+    if (salje || rezultatOtvoren) return;
+    poslednji = kod; poslednjiU = sad;
+    // Odmah se vidi da je kod uhvaćen: kratak zvuk i ime gosta iz spiska dok server upisuje.
+    klik();
+    upisi('kod', kod);
+  }
+  let tok = null, detektor = null;
+  const video = $('video'), platno = $('platno'), ctx = platno.getContext('2d', { willReadFrequently: true });
+  // Čita se samo kvadrat oko nišana (80 % kraće strane slike), u punoj rezoluciji do 800 px: QR je krupniji, a posla manje,
+  // pa se čita i do 20 puta u sekundi. Ne čita se dok je otvorena pretraga, prozor ili rezultat.
+  const ISECAK = 0.8, NAJVISE = 800;
+  async function kadar() {
+    if (!tok) return;
+    const zauzeto = salje || rezultatOtvoren || document.documentElement.classList.contains('trazi') || document.documentElement.classList.contains('sala-otvorena') || !$('prozor').classList.contains('skriveno');
+    if (video.readyState >= 2 && video.videoWidth && !zauzeto) {
+      try {
+        const vw = video.videoWidth, vh = video.videoHeight, strana = Math.round(Math.min(vw, vh) * ISECAK);
+        const sx = Math.round((vw - strana) / 2), sy = Math.round((vh - strana) / 2), n = Math.min(strana, NAJVISE);
+        platno.width = n; platno.height = n;
+        ctx.drawImage(video, sx, sy, strana, strana, 0, 0, n, n);
+        let tekst = null;
+        if (detektor) {
+          const k = await detektor.detect(platno);
+          if (k.length) tekst = k[0].rawValue;
+        } else {
+          const qr = jsQR(ctx.getImageData(0, 0, n, n).data, n, n, { inversionAttempts: 'dontInvert' });
+          if (qr && qr.data) tekst = qr.data;
+        }
+        if (tekst) procitan(tekst);
+      } catch (e) {}
+    }
+    setTimeout(kadar, 50);
+  }
+  function klik() {
+    try {
+      zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)();
+      const o = zvuk.createOscillator(), g = zvuk.createGain();
+      o.frequency.value = 1320; o.connect(g); g.connect(zvuk.destination);
+      g.gain.setValueAtTime(0.12, zvuk.currentTime); g.gain.exponentialRampToValueAtTime(0.001, zvuk.currentTime + 0.06);
+      o.start(); o.stop(zvuk.currentTime + 0.06);
+      if (navigator.vibrate) navigator.vibrate(25);
+    } catch (e) {}
+  }
+  async function ukljuci() {
+    try { zvuk = zvuk || new (window.AudioContext || window.webkitAudioContext)(); zvuk.resume(); } catch (e) {}
+    $('rezerva').classList.add('skriveno');
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { const e = new Error('nema'); e.name = 'NotSupportedError'; throw e; }
+      if ('BarcodeDetector' in window) {
+        try { if ((await BarcodeDetector.getSupportedFormats()).includes('qr_code')) detektor = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) {}
+      }
+      tok = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false });
+      try { await tok.getVideoTracks()[0].applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+      video.srcObject = tok;
+      await video.play();
+      $('pokreni').classList.add('skriveno');
+      $('linija').classList.remove('skriveno');
+      budan();
+      kadar();
+    } catch (e) {
+      tok = null;
+      const razlog = {
+        NotAllowedError: 'Pristup kameri je odbijen. Dozvolite kameru u podešavanjima pregledača za ovaj sajt.',
+        NotFoundError: 'Telefon nema kameru koju pregledač vidi.',
+        NotReadableError: 'Kameru trenutno koristi druga aplikacija. Zatvorite je i pokušajte ponovo.',
+        NotSupportedError: 'Ovaj pregledač ne daje kameru stranici. Probajte Safari ili Chrome.',
+      }[e.name] || 'Kamera nije dostupna (' + (e.name || e) + ').';
+      $('rezerva-razlog').textContent = razlog + ' Do tada QR kod možete da slikate.';
+      $('pokreni').classList.add('skriveno');
+      $('rezerva').classList.remove('skriveno');
+    }
+  }
+  $('ponovo').addEventListener('click', ukljuci);
+  let bravica = null;
+  async function budan() {
+    try { if ('wakeLock' in navigator && !bravica) { bravica = await navigator.wakeLock.request('screen'); bravica.addEventListener('release', () => { bravica = null; }); } } catch (e) {}
+  }
+  function iskljuci() {
+    if (bravica) { bravica.release().catch(() => {}); bravica = null; }
+    if (tok) tok.getTracks().forEach((t) => t.stop());
+    tok = null;
+    $('pokreni').classList.remove('skriveno');
+    $('linija').classList.add('skriveno');
+  }
+  $('pokreni').addEventListener('click', ukljuci);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) iskljuci(); });
+  $('slika').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const img = new Image();
+    img.onload = () => {
+      const w = Math.min(1200, img.width), h = Math.round(img.height * w / img.width);
+      platno.width = w; platno.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      const qr = jsQR(ctx.getImageData(0, 0, w, h).data, w, h);
+      URL.revokeObjectURL(img.src);
+      e.target.value = '';
+      if (qr && qr.data) { poslednji = ''; procitan(qr.data); }
+      else prikazi({ status: 'greska', poruka: 'Na slici nije pronađen QR kod. Slikajte bliže i oštrije.' });
+    };
+    img.src = URL.createObjectURL(f);
+  });
+
+  // ---------- Pretraga ----------
+  const bezKvacica = (s) => String(s).toLowerCase().replace(/dž/g, 'dz').replace(/đ/g, 'dj').normalize('NFD').replace(/[̀-ͯ]/g, '');
+  function trazi() {
+    const upit = bezKvacica($('q').value).trim();
+    const cifre = upit.replace(/\D/g, '');
+    const reci = upit.split(/\s+/);
+    const nadjeni = !upit ? [] : gosti.filter((g) => {
+      if (/^\d+$/.test(upit) && upit.length <= 4) return g.broj === upit;
+      if (cifre.length >= 5) return g.telefon.replace(/\D/g, '').includes(cifre);
+      const ip = bezKvacica(g.ime + ' ' + g.prezime);
+      return reci.every((w) => ip.includes(w));
+    });
+    let html = nadjeni.slice(0, 40).map((g, i) => '<li class="klik" data-osoba="' + esc(g.broj) + '" style="animation-delay:' + Math.min(i, 10) * 25 + 'ms"><div><div class="ko">' + ime(g)
+      + '</div><div class="sta">' + esc(opisGosta(g)) + '</div></div>'
+      + (g.stigao ? '<span class="znak">ušao ' + esc(g.vreme) + '</span>' : g.mesto ? '<span class="znak">' + esc(kratkoMesto(g)) + '</span>'
+        : '<span class="znak bez">bez mesta</span>') + '</li>').join('');
+    if (!upit) html = '<li class="napomena">Upišite ime, prezime, broj gosta ili telefon.</li>';
+    else if (!nadjeni.length) html = '<li class="napomena">Nema takvog gosta.</li>';
+    else if (nadjeni.length > 40) html += '<li class="napomena">Ima još, upišite više slova.</li>';
+    $('lista').innerHTML = html;
+  }
+  function uklopi() {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    ['pretraga', 'osoba'].forEach((id) => {
+      const el = $(id);
+      if (el.classList.contains('skriveno') || el.classList.contains('izlazi')) return;
+      el.style.top = vv.offsetTop + 'px';
+      el.style.height = vv.height + 'px';
+      window.scrollTo(0, 0);
+    });
+  }
+  if (window.visualViewport) { visualViewport.addEventListener('resize', uklopi); visualViewport.addEventListener('scroll', uklopi); }
+  function otvoriPretragu() {
+    const el = $('pretraga');
+    el.classList.remove('skriveno', 'izlazi');
+    document.documentElement.classList.add('trazi');
+    $('q').focus({ preventScroll: true });  // odmah u dodiru, inače iPhone ne otvori tastaturu
+    trazi(); uklopi();
+    setTimeout(uklopi, 300);
+  }
+  function zatvoriPretragu() {
+    const el = $('pretraga');
+    if (el.classList.contains('skriveno') || el.classList.contains('izlazi')) return;
+    el.classList.add('izlazi');
+    $('q').blur();
+    document.documentElement.classList.remove('trazi');
+    setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); el.style.top = ''; el.style.height = ''; }, 200);
+  }
+  $('otvori-pretragu').addEventListener('click', otvoriPretragu);
+  $('zatvori-pretragu').addEventListener('click', zatvoriPretragu);
+  $('q').addEventListener('input', trazi);
+  $('lista').addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-osoba]');
+    if (!li) return;
+    const g = gosti.find((x) => x.broj === li.dataset.osoba);
+    if (!g) return;
+    $('q').blur();
+    otvoriOsobu(g);
+  });
+  async function rucniUpis(g, dugme) {
+    if (salje) return;
+    salje = true;
+    dugme.classList.add('radi');
+    dugme.innerHTML = '<span class="vrti"></span>Upisujem…';
+    $('prozor-dugmad').querySelectorAll('button').forEach((x) => (x.disabled = true));
+    const r = await upisiGosta('broj', g.broj);
+    salje = false;
+    trazi();
+    const zatvori = { tekst: 'Zatvori' };
+    if (r.status === 'ok') {
+      ton(true);
+      prozor({ ikona: 'i-ok', klasa: 'ok', naslov: 'Upisan', tekst: '<span class="ime-gosta">' + ime(r.gost) + '</span><br>u ' + esc(r.gost.vreme), dugmad: [] });
+      setTimeout(zatvoriProzor, 1500);
+    } else {
+      ton(false);
+      const p = {
+        vec: ['i-x', 'Već je ušao', '<span class="ime-gosta">' + (r.gost ? ime(r.gost) : '') + '</span><br>u ' + esc(r.gost && r.gost.vreme) + ', upisao ' + esc(r.gost && r.gost.upisao)],
+        pristup: ['i-x', 'Nemate pristup', 'Nalog ' + esc(mejl) + ' nema pravo na tabelu gostiju. Javite štabu ovaj mejl.'],
+        istekla: ['i-pazi', 'Prijava je istekla', 'Gost nije upisan. Prijavite se ponovo, pa ga upišite.'],
+        nema: ['i-pazi', 'Nema na spisku', 'Gost nije pronađen u tabeli.'],
+      }[r.status] || ['i-pazi', 'Nije upisano', esc(r.poruka)];
+      prozor({ ikona: p[0], klasa: 'lose', naslov: p[1], tekst: p[2],
+        dugmad: r.status === 'istekla' ? [{ tekst: 'Prijavite se ponovo', vrsta: 'glavno', akcija: () => produzi().catch(() => {}) }, zatvori] : [zatvori] });
+    }
+  }
+
+
+  // ---------- Dolazak: osoba, njeni gosti i mesta za sve odjednom ----------
+  // Pretraga ili „Dodaj“ otvaraju isti prozor. Dugme šalje jedan zahtev (server: dolazak_): upis dolaska, gosti i mesta
+  // za sve, jedno do drugog. Server zahteve izvršava redom, pa dva skenera ne dobiju isto mesto; kad mesta nema za sve,
+  // ne upisuje ništa. Gost se piše kako ga skener upiše (ime i prezime, ili „suprug“), vezan je za osobu.
+  const brojGostiju = (n) => n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'gost' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'gosta' : 'gostiju');
+  const kratkoMesto = (g) => g.deo + ' ' + g.redSale + '/' + g.mesto;
+  const punoMesto = (g) => esc(g.deo) + ' · red <b>' + esc(g.redSale) + '</b> · mesto <b>' + esc(g.mesto) + '</b>';
+  const ulazOpis = (u) => 'ulaz ' + esc(u) + (u === '1' ? ' (levo)' : u === '2' ? ' (desno)' : '');
+  function opisGosta(g) {
+    const d = g.gostOd && gosti.find((x) => x.broj === g.gostOd);
+    const uz = gosti.filter((x) => x.gostOd === g.broj).length;
+    return [d ? 'gost · dolazi sa: ' + d.ime + ' ' + d.prezime : (g.grupa || g.uloga), 'broj ' + g.broj, uz ? '+' + brojGostiju(uz) : ''].filter(Boolean).join(' · ');
+  }
+  let osoba = null;  // {g | null (nova), novo, gosti: [], radi, greska, rezultat}
+  function otvoriOsobu(g) {
+    zatvoriPretragu();
+    osoba = { g: g || null, novo: '', gosti: [], radi: false, greska: '', rezultat: null };
+    const el = $('osoba');
+    el.classList.remove('skriveno', 'izlazi');
+    document.documentElement.classList.add('trazi');
+    crtajOsobu();
+    if (!g) $('osoba-novo').focus({ preventScroll: true });  // u dodiru, inače iPhone ne otvori tastaturu
+    uklopi(); setTimeout(uklopi, 300);
+  }
+  function zatvoriOsobu() {
+    const el = $('osoba');
+    if (el.classList.contains('skriveno') || (osoba && osoba.radi)) return;
+    el.classList.add('izlazi');
+    document.documentElement.classList.remove('trazi');
+    el.querySelectorAll('input').forEach((x) => x.blur());
+    setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); el.style.top = ''; el.style.height = ''; osoba = null; }, 200);
+  }
+  function akcijaOsobe() {
+    const g = osoba.g, n = osoba.gosti.length;
+    if (!g) return { tekst: n ? 'Dodeli mesta (' + (n + 1) + ')' : 'Dodeli mesto', moze: !!osoba.novo.trim() };
+    if (g.stigao && g.mesto) return n ? { tekst: 'Smesti ' + (n === 1 ? 'gosta' : 'goste (' + n + ')'), moze: true } : { tekst: 'Već je ušao', moze: false };
+    if (!g.mesto) return { tekst: n ? 'Dodeli mesta (' + (n + 1) + ')' : 'Dodeli mesto', moze: true };
+    return { tekst: n ? 'Upiši i smesti ' + (n === 1 ? 'gosta' : 'goste (' + n + ')') : 'Upiši dolazak', moze: true };
+  }
+  function crtajOsobu() {
+    if (!osoba) return;
+    const g = osoba.g, telo = $('osoba-telo'), dno = $('osoba-dno');
+    if (osoba.rezultat) return crtajRezultatOsobe();
+    $('osoba-naslov').textContent = g ? 'Dolazak' : 'Dodaj osobu';
+    let html = '';
+    if (g) {
+      html += '<div class="ime-osobe">' + ime(g) + '</div><div class="sta">' + esc(opisGosta(g)) + '</div>';
+      html += g.mesto ? '<div class="stanje">' + punoMesto(g) + '<br>' + ulazOpis(g.ulaz) + (g.stigao ? '<br>ušao u ' + esc(g.vreme) : '') + '</div>'
+        : '<div class="stanje bez">Nema mesto. Dobiće ga sada' + (g.grupa ? ', uz grupu ' + esc(g.grupa) : '') + '.</div>';
+    } else {
+      html += '<div class="polje"><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
+        + '<p class="uputstvo">Osoba koje nema na spisku. Dobiće mesto sa svojim gostima.</p>';
+    }
+    html += '<h3>Gosti</h3>' + osoba.gosti.map((x, i) => '<div class="red-gosta"><div class="polje" style="flex:1"><input data-gost="' + i
+      + '" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Ime i prezime" aria-label="Gost ' + (i + 1) + '" value="' + esc(x) + '"></div>'
+      + '<button data-ukloni-gosta="' + i + '" aria-label="Ukloni gosta"><svg><use href="#i-zatvori"/></svg></button></div>').join('')
+      + '<button class="dodaj-gosta" id="dodaj-gosta"><svg><use href="#i-plus"/></svg>Dodaj gosta</button>'
+      + (osoba.gosti.length ? '<p class="uputstvo">Najbolje ime i prezime, a može i „suprug“, „prijateljica“. Sedeće jedno do drugog.</p>' : '')
+      + (osoba.greska ? '<div class="greska-poruka">' + osoba.greska + '</div>' : '');
+    telo.innerHTML = html;
+    const a = akcijaOsobe();
+    dno.innerHTML = '<button class="dugme glavno" id="osoba-akcija"' + (a.moze ? '' : ' disabled') + '>' + a.tekst + '</button>'
+      + (g && !g.mesto ? '<button class="dugme tekst-dugme" id="osoba-sala">Izaberi mesto u sali</button>' : '');
+  }
+  function osveziDugme() {
+    const a = akcijaOsobe(), d = $('osoba-akcija');
+    if (d && !osoba.radi) { d.textContent = a.tekst; d.disabled = !a.moze; }
+  }
+  $('osoba').addEventListener('input', (e) => {
+    if (!osoba) return;
+    if (e.target.id === 'osoba-novo') { osoba.novo = e.target.value; osveziDugme(); }
+    if (e.target.dataset.gost != null) osoba.gosti[Number(e.target.dataset.gost)] = e.target.value;
+  });
+  $('osoba').addEventListener('click', (e) => {
+    if (!osoba) return;
+    if (e.target.closest('#zatvori-osobu')) return zatvoriOsobu();
+    if (osoba.radi) return;
+    if (e.target.closest('#dodaj-gosta')) {
+      osoba.gosti.push(''); osoba.greska = '';
+      crtajOsobu();
+      const p = $('osoba-telo').querySelector('input[data-gost="' + (osoba.gosti.length - 1) + '"]');
+      if (p) p.focus({ preventScroll: true });
+      p && p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    const u = e.target.closest('[data-ukloni-gosta]');
+    if (u) { osoba.gosti.splice(Number(u.dataset.ukloniGosta), 1); return crtajOsobu(); }
+    if (e.target.closest('#osoba-sala')) { const g = osoba.g; osoba.radi = false; zatvoriOsobu(); return setTimeout(() => otvoriSalu(g), 220); }
+    if (e.target.closest('#osoba-gotovo')) return zatvoriOsobu();
+    if (e.target.closest('#osoba-akcija')) posaljiDolazak();
+  });
+  async function posaljiDolazak() {
+    const a = akcijaOsobe();
+    if (!a.moze || osoba.radi) return;
+    osoba.radi = true; osoba.greska = '';
+    const d = $('osoba-akcija');
+    d.classList.add('radi'); d.innerHTML = '<span class="vrti"></span>' + (osoba.gosti.length || (osoba.g && !osoba.g.mesto) || !osoba.g ? 'Tražim mesta…' : 'Upisujem…');
+    $('osoba').querySelectorAll('input, .osoba-telo button').forEach((x) => (x.disabled = true));
+    const zahtev = { gosti: osoba.gosti.map((x) => x.trim()) };
+    if (osoba.g) zahtev.broj = osoba.g.broj; else zahtev.novo = osoba.novo.trim();
+    let o;
+    try { o = await server('dolazak', zahtev); }
+    catch (e) {
+      osoba.radi = false;
+      osoba.greska = e.istekla ? 'Prijava je istekla. Prijavite se ponovo, pa pokušajte.' : e.pristup ? 'Nalog ' + esc(mejl) + ' nema pravo na tabelu gostiju.' : 'Nije upisano: ' + esc(e.message) + '. Pokušajte ponovo.';
+      ton(false); crtajOsobu();
+      if (e.istekla) $('istice').classList.remove('skriveno');
+      return;
+    }
+    osoba.radi = false;
+    if (o.values) primi(o.values);
+    if (o.sala) primiSalu(o);
+    if (o.status !== 'ok') {
+      osoba.greska = o.status === 'nema-mesta' ? 'Nema ' + o.treba + ' slobodnih mesta (slobodno je ' + o.slobodno + '). Smanjite broj gostiju ili javite štabu.'
+        : o.status === 'vec' ? 'Već je ušao.' : esc(o.poruka || 'Nije upisano.');
+      if (osoba.g) osoba.g = gosti.find((x) => x.broj === osoba.g.broj) || osoba.g;
+      ton(false); return crtajOsobu();
+    }
+    const nadji = (x) => gosti.find((y) => y.broj === x.broj);
+    osoba.rezultat = [nadji(o.osoba)].concat(o.gosti.map(nadji)).filter(Boolean);
+    ton(true); crtajOsobu();
+  }
+  function crtajRezultatOsobe() {
+    const lj = osoba.rezultat, glavni = lj[0];
+    $('osoba-naslov').textContent = lj.length > 1 ? 'Mesta dodeljena' : glavni.stigao ? 'Upisan' : 'Mesto dodeljeno';
+    let html = '<div class="gotovo-ikona"><svg><use href="#i-ok"/></svg></div><ul class="mesta">' + lj.map((g, i) => '<li style="animation-delay:' + i * 60 + 'ms"><div class="ko">'
+      + ime(g) + (i && !/^\(/.test(g.prezime) ? ' <span class="sta">· gost</span>' : '') + '</div><div class="gde">' + punoMesto(g) + '</div><div class="sta">' + ulazOpis(g.ulaz) + '</div></li>').join('') + '</ul>';
+    // mapica: redovi u kojima sede, mesta sleva nadesno (ulaz 1 levo), njihova mesta istaknuta
+    const redovi = [];
+    lj.forEach((g) => { if (!redovi.some((r) => r[0] === g.deo && r[1] === g.redSale)) redovi.push([g.deo, g.redSale]); });
+    const zauz = new Set(gosti.filter((g) => g.mesto).map((g) => g.deo + '|' + g.redSale + '|' + Number(g.mesto)));
+    html += '<div class="mini">' + redovi.map(([deo, red]) => {
+      const r = sala.find((x) => x.deo === deo && x.red === red), n = r ? r.mesta : 0, ovde = new Set(lj.filter((g) => g.deo === deo && g.redSale === red).map((g) => Number(g.mesto)));
+      let s = '';
+      for (let m = 1; m <= n; m++) s += '<i class="' + (ovde.has(m) ? 'ovde' : zauz.has(deo + '|' + red + '|' + m) ? 'zauzeto' : '') + '">' + (ovde.has(m) ? m : '') + '</i>';
+      return '<div><div class="red-sale">' + esc(deo) + ' · red ' + esc(red) + ' · bina je napred</div><div class="sedista">' + s + '</div></div>';
+    }).join('') + '</div>';
+    $('osoba-telo').innerHTML = html;
+    $('osoba-dno').innerHTML = '<button class="dugme glavno" id="osoba-gotovo">Gotovo</button>';
+  }
+  $('otvori-dodaj').addEventListener('click', () => otvoriOsobu(null));
+
+  // ---------- Sala: mapa, zaključavanje mesta i smeštanje više gostiju ----------
+  // Dok je sala otvorena, telefon na 2 s pita server samo verziju; kad se promeni, čita sve (tabela, sala, zaključavanja).
+  // Dodir na slobodno mesto ga zaključava za ovog skenera (drugi ga vide i ne mogu da ga uzmu); smeštanje upisuje mesto
+  // i dolazak. Iz sale se ne izlazi dok su mesta zaključana: smestite goste ili otkažite izbor.
+  let sala = [], rezervisano = new Set(), brave = {}, verzija = 0, osvezenoU = 0;
+  let izabrana = [];               // [{m, gost: null | {broj} | {ime, prezime}}]
+  const dozvoljena = new Set();    // mesta gostiju koji nisu stigli (posle 18:15), uzeta uz potvrdu
+  let cekaGost = null, jezik = 'bez';
+  const OSLOBADJA = '18:15';
+  const kljucMesta = (deo, red, m) => deo + '|' + red + '|' + Number(m);
+  const opisMesta = (m) => { const [d, r, n] = m.split('|'); return d + ' ' + r + '/' + n; };
+  const kasni = (g) => /\d{1,2}[:.]\d{2}|kasni|касни|posle|после|kasnije|касније/i.test(g.napomena || '');
+  function primiSalu(o) {
+    if (o.sala) sala = o.sala.map((r) => ({ deo: r[0], red: r[1], mesta: Number(r[2]) }));
+    if (o.rezervisano) rezervisano = new Set(o.rezervisano.map((r) => kljucMesta(r[0], r[1], r[2])));
+    if (o.brave) brave = o.brave;
+    if (o.verzija !== undefined) verzija = o.verzija;
+    osvezenoU = Date.now();
+  }
+  function gostNaMestu() {
+    const m = {};
+    gosti.forEach((g) => { if (g.mesto) m[kljucMesta(g.deo, g.redSale, g.mesto)] = g; });
+    return m;
+  }
+  function stanjeMesta(m, naMestu) {
+    if (izabrana.some((x) => x.m === m)) return 'moje';
+    if (rezervisano.has(m)) return 'rez';
+    const g = naMestu[m];
+    if (g) return g.stigao ? 'stigao' : kasni(g) ? 'cuva' : sat() >= OSLOBADJA ? 'moze' : 'ceka';
+    if (brave[m] && brave[m] !== mejl) return 'tudje';
+    return 'slobodno';
+  }
+
+  // Crtež: kao plan sale (bina gore, parter pa balkon, mesto 1 levo)
+  const K = 34, R = 14, W = 1080;
+  let geometrija = null;
+  function crtajSalu() {
+    const g = $('mapa-g'), naMestu = gostNaMestu();
+    const el = [];
+    const t = (x, y, s, cls, a) => el.push('<text x="' + x + '" y="' + y + '" class="' + (cls || '') + '" text-anchor="' + (a || 'middle') + '">' + s + '</text>');
+    let y = 30;
+    el.push('<rect x="240" y="' + y + '" width="600" height="52" rx="6" class="bina"/>'); t(W / 2, y + 35, 'BINA', 'bina-t');
+    y += 110;
+    const redoviY = {};
+    const brojevi = { Parter: { slobodno: 0, ceka: 0, stiglo: 0, rez: 0 }, Balkon: { slobodno: 0, ceka: 0, stiglo: 0, rez: 0 } };
+    ['Parter', 'Balkon'].forEach((deo) => {
+      const redovi = sala.filter((r) => r.deo === deo);
+      if (!redovi.length) return;
+      if (deo === 'Balkon') { t(60, y - 4, 'Ulaz 1', 'ulaz', 'start'); t(W - 60, y - 4, 'Ulaz 2', 'ulaz', 'end'); y += 30; }
+      t(W / 2, y, deo.toUpperCase() + ' · ' + redovi.reduce((a, r) => a + r.mesta, 0) + ' mesta', 'naslov-dela'); y += 46;
+      redovi.forEach((r, i) => {
+        if (deo === 'Parter' && i === 5) y += 22;   // prolaz između V i VI reda
+        redoviY[deo + '|' + r.red] = y;
+        const x1 = W / 2 - (r.mesta - 1) * K / 2;
+        t(x1 - 30, y + 7, r.red, 'oznaka', 'end');
+        for (let m = 1; m <= r.mesta; m++) {
+          const km = kljucMesta(deo, r.red, m), st = stanjeMesta(km, naMestu), x = x1 + (m - 1) * K, gost = naMestu[km];
+          const b = brojevi[deo];
+          if (st === 'slobodno' || st === 'moje') b.slobodno++; else if (st === 'stigao') b.stiglo++; else if (st === 'rez') b.rez++; else if (st !== 'tudje') b.ceka++;
+          el.push('<circle data-m="' + km + '" cx="' + x + '" cy="' + y + '" r="' + R + '" class="m-' + st + '"/>');
+          const tekst = gost ? gost.broj : st === 'slobodno' || st === 'moje' || st === 'tudje' ? m : '';
+          if (tekst !== '') t(x, y + 4, tekst, 'br' + (st === 'stigao' ? ' na-boji' : st === 'moje' ? ' na-moje' : ''));
+        }
+        y += K + 4;
+      });
+      if (deo === 'Parter') { y += 8; t(60, y + 8, 'Ulaz 1', 'ulaz', 'start'); t(W - 60, y + 8, 'Ulaz 2', 'ulaz', 'end'); y += 60; }
+    });
+    g.innerHTML = el.join('');
+    const H = y + 10;
+    if (!geometrija || geometrija.H !== H) { geometrija = { H, redoviY }; $('mapa-svg').setAttribute('viewBox', '0 0 ' + W + ' ' + H); }
+    geometrija.redoviY = redoviY;
+    primeniPogled();
+    $('sala-brojevi').innerHTML = ['Parter', 'Balkon'].map((d) => '<div><b>' + d + '</b>slobodno <i>' + brojevi[d].slobodno + '</i> · čeka <i>'
+      + brojevi[d].ceka + '</i> · stiglo <i>' + brojevi[d].stiglo + '</i>' + (brojevi[d].rez ? ' · rez. <i>' + brojevi[d].rez + '</i>' : '') + '</div>').join('');
+    crtajPanel(naMestu);
+  }
+  const LEGENDA = [['slobodno', 'slobodno'], ['moje', 'vaš izbor'], ['ceka', 'čeka gosta'], ['stigao', 'stigao'], ['moze', 'nije stigao (posle ' + OSLOBADJA + ')'],
+    ['cuva', 'kasni, čuva se'], ['tudje', 'zaključao drugi'], ['rez', 'rezervisano']];
+  $('legenda').innerHTML = LEGENDA.map(([c, n]) => '<span><svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7" class="m-' + c + '" style="stroke-width:2.5"/></svg>' + n + '</span>').join('');
+
+  // Zum i pomeranje: jedan prst pomera, dva zumiraju, točkić/dugmad zumiraju; dodir bez pomeranja bira mesto
+  const pogled = { s: 1, x: 0, y: 0 };
+  function primeniPogled() {
+    const H = geometrija ? geometrija.H : 1000;
+    pogled.s = Math.min(6, Math.max(1, pogled.s));
+    const max = (v, ceo) => Math.max(-(ceo * pogled.s - ceo), Math.min(0, v));
+    pogled.x = max(pogled.x, W); pogled.y = max(pogled.y, H);
+    $('mapa-g').setAttribute('transform', 'translate(' + pogled.x + ' ' + pogled.y + ') scale(' + pogled.s + ')');
+  }
+  function jedinica() { const r = $('mapa-svg').getBoundingClientRect(); const vb = $('mapa-svg').viewBox.baseVal; return Math.max(vb.width / r.width, vb.height / r.height); }
+  function zumiraj(f, cx, cy) {
+    const s2 = Math.min(6, Math.max(1, pogled.s * f)), k2 = s2 / pogled.s;
+    pogled.x = cx - (cx - pogled.x) * k2; pogled.y = cy - (cy - pogled.y) * k2; pogled.s = s2; primeniPogled();
+  }
+  function tackaSvg(e) {
+    const r = $('mapa-svg').getBoundingClientRect(), vb = $('mapa-svg').viewBox.baseVal, u = jedinica();
+    return [(e.clientX - r.left - (r.width - vb.width / u) / 2) * u, (e.clientY - r.top - (r.height - vb.height / u) / 2) * u];
+  }
+  const prsti = new Map();
+  let pomeren = false, pocetak = null, pinc = null;
+  const mapa = $('mapa');
+  mapa.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.mapa-alati')) return;
+    mapa.setPointerCapture(e.pointerId);
+    prsti.set(e.pointerId, [e.clientX, e.clientY]);
+    if (prsti.size === 1) { pomeren = false; pocetak = [e.clientX, e.clientY, pogled.x, pogled.y]; }
+    if (prsti.size === 2) {
+      const [a, b] = [...prsti.values()];
+      pinc = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), s: pogled.s, x: pogled.x, y: pogled.y, c: tackaSvg({ clientX: (a[0] + b[0]) / 2, clientY: (a[1] + b[1]) / 2 }) };
+      pomeren = true;
+    }
+  });
+  mapa.addEventListener('pointermove', (e) => {
+    if (!prsti.has(e.pointerId)) return;
+    prsti.set(e.pointerId, [e.clientX, e.clientY]);
+    if (prsti.size === 2 && pinc) {
+      const [a, b] = [...prsti.values()];
+      const s2 = Math.min(6, Math.max(1, pinc.s * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinc.d)), k2 = s2 / pinc.s;
+      pogled.s = s2; pogled.x = pinc.c[0] - (pinc.c[0] - pinc.x) * k2; pogled.y = pinc.c[1] - (pinc.c[1] - pinc.y) * k2;
+      primeniPogled();
+    } else if (prsti.size === 1 && pocetak) {
+      const dx = e.clientX - pocetak[0], dy = e.clientY - pocetak[1];
+      if (Math.hypot(dx, dy) > 8) pomeren = true;
+      if (pomeren) { const u = jedinica(); pogled.x = pocetak[2] + dx * u; pogled.y = pocetak[3] + dy * u; primeniPogled(); }
+    }
+  });
+  function pusten(e) {
+    if (!prsti.has(e.pointerId)) return;
+    prsti.delete(e.pointerId);
+    if (prsti.size < 2) pinc = null;
+    if (prsti.size === 1) { const [p] = [...prsti.values()]; pocetak = [p[0], p[1], pogled.x, pogled.y]; }
+    if (!prsti.size && !pomeren && e.type === 'pointerup') {
+      const c = document.elementFromPoint(e.clientX, e.clientY);
+      if (c && c.dataset && c.dataset.m) dodirMesta(c.dataset.m);
+    }
+  }
+  mapa.addEventListener('pointerup', pusten);
+  mapa.addEventListener('pointercancel', pusten);
+  mapa.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = tackaSvg(e); zumiraj(e.deltaY < 0 ? 1.15 : 1 / 1.15, x, y); }, { passive: false });
+  $('mapa-plus').addEventListener('click', () => zumiraj(1.5, W / 2, (geometrija ? geometrija.H : 800) / 2));
+  $('mapa-minus').addEventListener('click', () => zumiraj(1 / 1.5, W / 2, (geometrija ? geometrija.H : 800) / 2));
+  $('mapa-cela').addEventListener('click', () => { pogled.s = 1; pogled.x = 0; pogled.y = 0; primeniPogled(); });
+  function pokaziRed(deo, red) {
+    const y = geometrija && geometrija.redoviY[deo + '|' + red];
+    if (y === undefined) return;
+    pogled.s = 2.4; pogled.x = -(W * pogled.s - W) / 2; pogled.y = -(y * pogled.s - geometrija.H / 2 / 1.2);
+    primeniPogled();
+  }
+
+  // Dodir na mesto: slobodno ↔ izabrano; zauzeto pokaže ko je; posle 18:15 mesto gosta koji nije stigao uz potvrdu
+  function dodirMesta(m) {
+    const naMestu = gostNaMestu(), st = stanjeMesta(m, naMestu), g = naMestu[m];
+    if (st === 'moje') { izabrana = izabrana.filter((x) => x.m !== m); dozvoljena.delete(m); crtajSalu(); zakljucajUskoro(); return; }
+    if (st === 'slobodno') { izabrana.push({ m, gost: null }); dodeliCekaGosta(); crtajSalu(); zakljucajUskoro(); return; }
+    if (st === 'tudje') return poruka('Mesto ' + opisMesta(m) + ' trenutno bira ' + brave[m]);
+    if (st === 'rez') return poruka('Mesto ' + opisMesta(m) + ' je rezervisano');
+    const tekst = '<span class="ime-gosta">' + ime(g) + '</span><br>' + esc(g.grupa || g.uloga) + ' · broj ' + esc(g.broj) + '<br>'
+      + (g.stigao ? 'stigao u ' + esc(g.vreme) : 'nije stigao' + (g.napomena ? '<br>napomena: ' + esc(g.napomena) : ''));
+    const dugmad = [{ tekst: 'Zatvori' }];
+    if (st === 'moze' || st === 'cuva') dugmad.unshift({ tekst: 'Dati ovo mesto drugom', vrsta: 'glavno', akcija: () => {
+      dozvoljena.add(m); izabrana.push({ m, gost: null }); dodeliCekaGosta(); crtajSalu(); zakljucajUskoro();
+    } });
+    prozor({ ikona: 'i-korisnik', naslov: opisMesta(m), tekst, dugmad });
+  }
+  function dodeliCekaGosta() {
+    if (!cekaGost) return;
+    const slobodan = izabrana.find((x) => !x.gost);
+    if (slobodan) { slobodan.gost = { broj: cekaGost.broj }; cekaGost = null; osveziCekaGosta(); }
+  }
+  function osveziCekaGosta() {
+    $('ceka-gost').classList.toggle('skriveno', !cekaGost);
+    if (cekaGost) $('ceka-gost').innerHTML = 'Izaberite mesto za: ' + ime(cekaGost) + ' (broj ' + esc(cekaGost.broj) + ')';
+  }
+
+  // Zaključavanje na serveru: posle dodira (kratka pauza da se skupi više dodira) i na 45 s dok je izbor otvoren
+  let tajmerBrave = null, bravaSalje = false, bravaOpet = false;
+  function zakljucajUskoro() { clearTimeout(tajmerBrave); tajmerBrave = setTimeout(zakljucajSad, 250); }
+  async function zakljucajSad() {
+    if (bravaSalje) { bravaOpet = true; return; }
+    bravaSalje = true;
+    try {
+      const o = await server('zakljucaj', { mesta: izabrana.map((x) => x.m), dozvoli: [...dozvoljena] });
+      brave = o.brave || {};
+      if (o.verzija) verzija = o.verzija;
+      (o.konflikt || []).forEach((c) => { izabrana = izabrana.filter((x) => x.m !== c.mesto); poruka('Mesto ' + opisMesta(c.mesto) + ': ' + c.razlog); });
+      crtajSalu();
+    } catch (e) { poruka('Zaključavanje nije uspelo: ' + e.message); }
+    bravaSalje = false;
+    if (bravaOpet) { bravaOpet = false; zakljucajSad(); }
+  }
+  setInterval(() => { if (izabrana.length && !$('sala').classList.contains('skriveno')) zakljucajSad(); }, 45000);
+
+  let tajmerPoruke = null;
+  function poruka(t) {
+    const el = $('sala-poruka');
+    el.textContent = t; el.classList.remove('skriveno');
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(tajmerPoruke); tajmerPoruke = setTimeout(() => el.classList.add('skriveno'), 3200);
+  }
+
+  // Panel ispod mape: izbor (kad su mesta izabrana) ili spiskovi
+  function crtajPanel(naMestu) {
+    const p = $('sala-panel');
+    if (izabrana.length) {
+      const popunjeno = izabrana.filter((x) => x.gost).length;
+      p.innerHTML = '<div class="izbor"><div class="zaglavlje">Izabrano mesta: ' + izabrana.length + '<span class="sitno">Mesta su zaključana za vas. Za svako izaberite gosta, pa Smesti.</span></div>'
+        + '<ul class="mesta">' + izabrana.map((x, i) => {
+          const g = x.gost && x.gost.broj ? gosti.find((y) => y.broj === x.gost.broj) : null;
+          const ko = g ? ime(g) + ' <span class="sitno">broj ' + esc(g.broj) + '</span>' : x.gost ? esc(x.gost.ime + ' ' + x.gost.prezime) + ' <span class="sitno">nov gost</span>' : '';
+          return '<li><div><div class="oznaka-mesta">' + esc(opisMesta(x.m)) + '</div><div class="ko' + (ko ? '' : ' prazno') + '">' + (ko || 'nije izabran gost') + '</div></div>'
+            + (x.gost ? '<button class="ukloni" data-ukloni="' + i + '" aria-label="Ukloni gosta"><svg><use href="#i-zatvori"/></svg></button>'
+              : '<button class="malo" data-biraj="' + i + '">Izaberi gosta</button>') + '</li>';
+        }).join('') + '</ul><div class="akcije"><button class="dugme obicno" id="otkazi-izbor">Otkaži</button>'
+        + '<button class="dugme glavno" id="smesti"' + (popunjeno ? '' : ' disabled') + '>Smesti' + (popunjeno ? ' (' + popunjeno + ')' : '') + '</button></div></div>';
+      return;
+    }
+    const jez = [['bez', 'Bez mesta'], ['slobodna', 'Slobodna'], ['ceka', 'Čekaju'], ['stigli', 'Stigli']];
+    let html = '<div class="jezici">' + jez.map(([j, n]) => '<button data-jezik="' + j + '" class="' + (jezik === j ? 'aktivan' : '') + '">' + n + '</button>').join('') + '</div><ul class="sala-lista">';
+    const red = (deo, r) => sala.findIndex((x) => x.deo === deo && x.red === r);
+    const poMestu = (a, b) => (a.deo === b.deo ? 0 : a.deo === 'Parter' ? -1 : 1) || red(a.deo, a.redSale) - red(b.deo, b.redSale) || a.mesto - b.mesto;
+    if (jezik === 'bez') {
+      const stigli = gosti.filter((g) => g.stigao && !g.mesto && Number(g.broj) < 900);
+      html += stigli.length ? '<li class="grupa">Stigli, a nemaju mesto</li>' + stigli.map((g) => '<li><div>' + ime(g) + '<div class="sitno">' + esc(g.grupa || g.uloga) + ' · ušao ' + esc(g.vreme) + '</div></div><button data-za="' + esc(g.broj) + '">Mesto</button></li>').join('')
+        : '<li class="prazno-lista">Svi koji su stigli imaju mesto.</li>';
+      html += '<li class="prazno-lista">Gost sa spiska bez mesta: nađite ga u pretrazi i dodirnite MESTO.<br>Gost koga nema na spisku: izaberite mesto, pa „Izaberi gosta“ i upišite ime.</li>';
+    } else if (jezik === 'slobodna') {
+      sala.forEach((r) => {
+        const nizovi = []; let niz = [];
+        for (let m = 1; m <= r.mesta + 1; m++) {
+          const km = kljucMesta(r.deo, r.red, m);
+          if (m <= r.mesta && stanjeMesta(km, naMestu) === 'slobodno') niz.push(m); else { if (niz.length) nizovi.push(niz); niz = []; }
+        }
+        const n = nizovi.reduce((a, x) => a + x.length, 0);
+        if (n) html += '<li data-red="' + esc(r.deo + '|' + r.red) + '"><div><span class="oznaka-mesta">' + esc(r.deo + ' ' + r.red) + '</span> <span class="sitno">'
+          + nizovi.map((x) => x.length > 1 ? x[0] + '–' + x[x.length - 1] : x[0]).join(', ') + '</span></div><b>' + n + '</b></li>';
+      });
+    } else {
+      const lista = gosti.filter((g) => g.mesto && (jezik === 'stigli' ? g.stigao : !g.stigao)).sort(poMestu);
+      html += lista.length ? lista.map((g) => {
+        const st = stanjeMesta(kljucMesta(g.deo, g.redSale, g.mesto), naMestu);
+        return '<li data-red="' + esc(g.deo + '|' + g.redSale) + '"><div>' + ime(g) + '<div class="sitno">' + esc(g.grupa || g.uloga)
+          + (st === 'cuva' ? ' · kasni: ' + esc(g.napomena) : st === 'moze' ? ' · nije stigao' : g.stigao ? ' · ' + esc(g.vreme) : '') + '</div></div><span class="oznaka-mesta">'
+          + esc(g.deo + ' ' + g.redSale + '/' + g.mesto) + '</span></li>';
+      }).join('') : '<li class="prazno-lista">Nema.</li>';
+    }
+    p.innerHTML = html + '</ul>';
+  }
+  $('sala-panel').addEventListener('click', (e) => {
+    const j = e.target.closest('[data-jezik]');
+    if (j) { jezik = j.dataset.jezik; crtajSalu(); return; }
+    const za = e.target.closest('[data-za]');
+    if (za) { cekaGost = gosti.find((g) => g.broj === za.dataset.za) || null; osveziCekaGosta(); poruka('Dodirnite slobodno mesto na mapi'); return; }
+    const u = e.target.closest('[data-ukloni]');
+    if (u) { izabrana[Number(u.dataset.ukloni)].gost = null; crtajSalu(); return; }
+    const b = e.target.closest('[data-biraj]');
+    if (b) { otvoriBirac(Number(b.dataset.biraj)); return; }
+    if (e.target.closest('#otkazi-izbor')) { otkaziIzbor(); return; }
+    if (e.target.closest('#smesti')) { smesti(e.target.closest('#smesti')); return; }
+    const r = e.target.closest('[data-red]');
+    if (r) { const [d, rr] = r.dataset.red.split('|'); pokaziRed(d, rr); }
+  });
+  function otkaziIzbor() {
+    izabrana = []; dozvoljena.clear();
+    crtajSalu(); zakljucajSad();
+  }
+  async function smesti(dugme) {
+    const dodele = izabrana.filter((x) => x.gost).map((x) => Object.assign({ mesto: x.m }, x.gost));
+    if (!dodele.length) return;
+    dugme.disabled = true; dugme.innerHTML = '<span class="vrti"></span>Smeštam…';
+    try {
+      const o = await server('smesti', { dodele });
+      if (o.status !== 'ok') { poruka(o.poruka || 'Nije smešteno'); await ucitaj(); return; }
+      const smesteni = new Set(dodele.map((d) => d.mesto));
+      izabrana = izabrana.filter((x) => !smesteni.has(x.m));
+      smesteni.forEach((m) => dozvoljena.delete(m));
+      primiSalu(o); primi(o.values);
+      ton(true);
+      poruka('Smešteno: ' + dodele.length + (o.pomereni && o.pomereni.length ? ' (bez mesta ostao gost ' + o.pomereni.join(', ') + ')' : ''));
+    } catch (e) { poruka('Nije smešteno: ' + e.message); }
+    crtajSalu();
+  }
+
+  // Izbor gosta za mesto: gosti bez mesta (prvo oni koji su stigli), ili nov gost po imenu
+  let biracZa = -1;
+  function otvoriBirac(i) {
+    biracZa = i;
+    $('birac-naslov').textContent = 'Ko sedi na ' + opisMesta(izabrana[i].m) + '?';
+    $('bq').value = '';
+    $('birac').classList.remove('skriveno');
+    $('bq').focus({ preventScroll: true });
+    crtajBirac();
+  }
+  function zatvoriBirac() { $('birac').classList.add('skriveno'); $('bq').blur(); }
+  function crtajBirac() {
+    const upit = bezKvacica($('bq').value).trim(), reci = upit.split(/\s+/).filter(Boolean);
+    const zauzeti = new Set(izabrana.map((x) => x.gost && x.gost.broj).filter(Boolean));
+    let kand = gosti.filter((g) => !g.mesto && !zauzeti.has(g.broj) && Number(g.broj) < 900);
+    if (upit) kand = kand.filter((g) => /^\d+$/.test(upit) ? g.broj === upit : reci.every((w) => bezKvacica(g.ime + ' ' + g.prezime).includes(w)));
+    kand.sort((a, b) => (b.stigao ? 1 : 0) - (a.stigao ? 1 : 0) || (a.prezime + a.ime).localeCompare(b.prezime + b.ime));
+    let html = '';
+    const izvorno = $('bq').value.trim().replace(/\s+/g, ' ');
+    if (reci.length >= 2 && !/^\d+$/.test(upit)) html += '<li><div><b>Nov gost:</b> ' + esc(izvorno) + '<div class="sitno">nije na spisku (pratilac, dodatni gost)</div></div><button data-nov="1">Dodaj</button></li>';
+    html += kand.slice(0, 40).map((g) => '<li><div>' + ime(g) + '<div class="sitno">broj ' + esc(g.broj) + ' · ' + esc(g.grupa || g.uloga) + (g.stigao ? ' · stigao ' + esc(g.vreme) : '') + '</div></div><button data-gost="' + esc(g.broj) + '">Izaberi</button></li>').join('');
+    if (!html) html = '<li class="prazno-lista">' + (upit ? 'Nema gosta bez mesta sa tim imenom. Za novog gosta upišite ime i prezime.' : 'Upišite ime gosta.') + '</li>';
+    $('bl').innerHTML = html;
+  }
+  $('bq').addEventListener('input', crtajBirac);
+  $('zatvori-birac').addEventListener('click', zatvoriBirac);
+  $('bl').addEventListener('click', (e) => {
+    const g = e.target.closest('[data-gost]'), n = e.target.closest('[data-nov]');
+    if (!g && !n || biracZa < 0 || !izabrana[biracZa]) return;
+    if (g) izabrana[biracZa].gost = { broj: g.dataset.gost };
+    else { const d = $('bq').value.trim().replace(/\s+/g, ' ').split(' '); izabrana[biracZa].gost = { ime: d[0], prezime: d.slice(1).join(' ') }; }
+    zatvoriBirac(); crtajSalu();
+  });
+
+  // Otvaranje i zatvaranje sale; osvežavanje dok je otvorena
+  let tajmerSale = null, salaPita = false;
+  function otvoriSalu(gost) {
+    cekaGost = gost || null; osveziCekaGosta();
+    if (cekaGost) jezik = 'slobodna';
+    $('sala').classList.remove('skriveno', 'izlazi');
+    document.documentElement.classList.add('sala-otvorena');
+    crtajSalu();
+    clearInterval(tajmerSale);
+    tajmerSale = setInterval(proveriSalu, 2000);
+    proveriSalu(true);
+  }
+  async function proveriSalu(sve) {
+    if (salaPita) return;
+    salaPita = true;
+    try {
+      const o = sve ? null : await server('verzija');
+      if (sve || o.verzija !== verzija) { await ucitaj(); crtajSalu(); }
+      else osvezenoU = Date.now();
+    } catch (e) {}
+    salaPita = false;
+  }
+  setInterval(() => {
+    if ($('sala').classList.contains('skriveno')) return;
+    const s = Math.round((Date.now() - osvezenoU) / 1000);
+    $('sala-osvezeno').textContent = osvezenoU ? (s <= 3 ? 'uživo' : 'osveženo pre ' + s + ' s') : 'učitavam…';
+  }, 1000);
+  function zatvoriSalu() {
+    if (izabrana.length) {
+      return prozor({ ikona: 'i-pazi', naslov: 'Mesta su zaključana', tekst: 'Izabrali ste ' + izabrana.length + ' mesta. Smestite goste ili otkažite izbor, da ih oslobodite za druge.',
+        dugmad: [{ tekst: 'Otkaži izbor i izađi', vrsta: 'glavno', akcija: () => { otkaziIzbor(); zatvoriSalu(); } }, { tekst: 'Ostani' }] });
+    }
+    clearInterval(tajmerSale);
+    cekaGost = null;
+    const el = $('sala');
+    el.classList.add('izlazi');
+    document.documentElement.classList.remove('sala-otvorena');
+    setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); }, 200);
+  }
+  $('otvori-salu').addEventListener('click', () => otvoriSalu());
+  $('zatvori-salu').addEventListener('click', zatvoriSalu);
+
+  // ---------- Uputstvo: koraci sa Nazad/Dalje i prevlačenjem ----------
+  let korak = 0;
+  const brojKoraka = document.querySelectorAll('.korak').length;
+  $('tacke').innerHTML = '<i></i>'.repeat(brojKoraka);
+  function idiNa(n) {
+    korak = Math.max(0, Math.min(brojKoraka - 1, n));
+    $('vrpca').style.transform = 'translateX(' + (-100 * korak) + '%)';
+    [...$('tacke').children].forEach((t, i) => t.classList.toggle('ovde', i === korak));
+    $('nazad').disabled = korak === 0;
+    const poslednji = korak === brojKoraka - 1;
+    $('dalje').textContent = poslednji ? 'Prijavite se' : 'Dalje';
+    $('dalje').classList.toggle('glavno', poslednji);
+  }
+  $('nazad').addEventListener('click', () => idiNa(korak - 1));
+  $('dalje').addEventListener('click', () => (korak === brojKoraka - 1 ? prijava() : idiNa(korak + 1)));
+  // Prevlačenje: traka prati prst, a na pustanje se lepi na najbliži korak (ili sledeći, ako je prevlačenje bilo brzo).
+  // Na prvom i poslednjem koraku traka se rasteže uz otpor. Uspravno pomeranje se ne dira.
+  let vuce = null;
+  const vrpca = $('vrpca');
+  $('koraci').addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    vuce = { x: t.clientX, y: t.clientY, dx: 0, smer: null, tragovi: [[t.clientX, e.timeStamp]], sirina: $('koraci').clientWidth || 1 };
+  }, { passive: true });
+  $('koraci').addEventListener('touchmove', (e) => {
+    if (!vuce) return;
+    const t = e.touches[0], dx = t.clientX - vuce.x, dy = t.clientY - vuce.y;
+    if (!vuce.smer && Math.hypot(dx, dy) > 8) vuce.smer = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+    if (vuce.smer !== 'x') return;
+    if (e.cancelable) e.preventDefault();
+    const ivica = (korak === 0 && dx > 0) || (korak === brojKoraka - 1 && dx < 0);
+    vuce.dx = ivica ? dx / (1 + Math.abs(dx) / (vuce.sirina * 0.25)) : dx;
+    vuce.tragovi.push([t.clientX, e.timeStamp]);
+    if (vuce.tragovi.length > 5) vuce.tragovi.shift();
+    vrpca.classList.add('vuce');
+    vrpca.style.transform = 'translateX(calc(' + (-100 * korak) + '% + ' + vuce.dx + 'px))';
+  }, { passive: false });
+  function pusti(e) {
+    if (!vuce) return;
+    const v = vuce; vuce = null;
+    vrpca.classList.remove('vuce');
+    if (v.smer !== 'x') return;
+    const [x0, t0] = v.tragovi[0], [x1, t1] = v.tragovi[v.tragovi.length - 1];
+    const brzina = t1 > t0 ? (x1 - x0) / (t1 - t0) : 0;  // px/ms
+    let n = korak;
+    if (Math.abs(brzina) > 0.35) n = korak + (brzina < 0 ? 1 : -1);
+    else if (Math.abs(v.dx) > v.sirina * 0.35) n = korak + (v.dx < 0 ? 1 : -1);
+    idiNa(n);
+  }
+  $('koraci').addEventListener('touchend', pusti);
+  $('koraci').addEventListener('touchcancel', pusti);
+  idiNa(0);
+
+  // ---------- Prozor: potvrda i greške ----------
+  function prozor({ ikona, klasa, naslov, tekst, dugmad }) {
+    $('prozor').querySelector('.prozor-kartica').className = 'prozor-kartica' + (klasa ? ' ' + klasa : '');
+    $('prozor-ikona').innerHTML = '<svg><use href="#' + (ikona || 'i-pazi') + '"/></svg>';
+    $('prozor-naslov').textContent = naslov;
+    $('prozor-tekst').innerHTML = tekst;
+    $('prozor-dugmad').innerHTML = '';
+    dugmad.forEach((d) => {
+      const b = document.createElement('button');
+      b.className = 'dugme ' + (d.vrsta || 'obicno');
+      b.textContent = d.tekst;
+      b.addEventListener('click', () => { if (d.zadrzi) return d.akcija(b); zatvoriProzor(); if (d.akcija) d.akcija(); });
+      $('prozor-dugmad').appendChild(b);
+    });
+    $('prozor').classList.remove('skriveno', 'izlazi');
+  }
+  function zatvoriProzor() {
+    $('prozor').classList.add('izlazi');
+    setTimeout(() => $('prozor').classList.add('skriveno'), 180);
+  }
+  $('prozor').addEventListener('click', (e) => { if (e.target === $('prozor')) zatvoriProzor(); });
+
+  function greskaPrijave(e) {
+    const ponovo = { tekst: 'Pokušajte ponovo', vrsta: 'glavno', akcija: prijava };
+    const zatvori = { tekst: 'Zatvori' };
+    if (e.pristup) return prozor({ ikona: 'i-x', naslov: 'Nalog nema pristup tabeli',
+      tekst: 'Prijavljeni ste kao<br><span class="mejl">' + esc(mejl || 'nepoznat nalog') + '</span><br>Štab još nije podelio tabelu gostiju sa ovim nalogom (kao urednik). Javite štabu ovaj mejl, ili se prijavite nalogom sa kojim je tabela podeljena.',
+      dugmad: [{ tekst: 'Prijavite se drugim nalogom', vrsta: 'glavno', akcija: () => { odjavi(); prijava(); } }, zatvori] });
+    if (e.istekla) return prozor({ naslov: 'Prijava je istekla', tekst: 'Google prijava traje sat vremena. Prijavite se ponovo, istim nalogom.', dugmad: [ponovo, zatvori] });
+    const poruke = {
+      dozvole: ['Prijava nije završena', 'Google nije dao mejl naloga. Pokušajte ponovo: izaberite nalog, pa <b>Continue</b>.', false],
+      odbijeno: ['Prijava nije odobrena', 'Na Google ekranu je izabrano <b>Cancel</b>. Pokušajte ponovo: izaberite nalog, pa <b>Continue</b>.', false],
+      prekinuto: ['Prijava je prekinuta', 'Prozor za Google prijavu je zatvoren pre kraja. Pokušajte ponovo i prođite sve korake do <b>Continue</b>.', false],
+      blokirano: ['Pregledač je blokirao prijavu', 'Pregledač nije dozvolio da se otvori Google prozor za prijavu. Dozvolite iskačuće prozore (pop-ups) za ovaj sajt u podešavanjima pregledača, pa pokušajte ponovo.', false],
+      server: ['Server ne odgovara', 'Prijava je prošla, ali server tabele gostiju ne odgovara' + (e.message ? ' (' + esc(e.message.replace(/^server \(|\)$/g, '')) + ')' : '') + '. Proverite internet, pa pokušajte ponovo. Ako se ponavlja, javite štabu.', false],
+      ucitava: ['Google prijava se još učitava', 'Sačekajte par sekundi i proverite internet, pa pokušajte ponovo.', false],
+    };
+    const [naslov, tekst] = poruke[e.kod] || ['Prijava nije uspela', 'Nešto nije u redu sa Google prijavom' + (e.message ? ' (' + esc(e.message) + ')' : '') + '. Proverite internet i pokušajte ponovo.', false];
+    prozor({ naslov, tekst, dugmad: [ponovo, zatvori] });
+  }
+
+  // ---------- Početak ----------
+  // Uputstvo: pri prvom dolasku je ceo početni ekran; kad se neko već prijavio, otvara se u prozoru.
+  function kratko() { document.documentElement.classList.toggle('kratko', !!citaj('nova-videno')); }
+  function otvoriVodic() { idiNa(0); document.documentElement.classList.add('vodic-otvoren'); $('vodic').classList.remove('izlazi'); }
+  function zatvoriVodic() {
+    const html = document.documentElement;
+    if (!html.classList.contains('vodic-otvoren')) return;
+    $('vodic').classList.add('izlazi');
+    setTimeout(() => { html.classList.remove('vodic-otvoren'); $('vodic').classList.remove('izlazi'); }, 240);
+  }
+  $('otvori-vodic').addEventListener('click', otvoriVodic);
+  $('zatvori-vodic').addEventListener('click', zatvoriVodic);
+  $('prijava-kratko').addEventListener('click', () => prijava());
+  kratko();
+  function prikaziPrijavu(poruka) {
+    iskljuci();
+    kratko();
+    document.documentElement.classList.remove('ucitava');
+    $('ekran-rad').classList.add('skriveno');
+    $('ekran-prijava').classList.remove('skriveno');
+    $('prijava-poruka').textContent = poruka || '';
+    idiNa(0);  // uputstvo uvek od prvog koraka
+  }
+  let osvezavanje = null;
+  async function pocni() {
+    try {
+      // Čim je prijava tu, početni ekran se sklanja i stoji samo „Učitavam…“ dok ne stignu gosti.
+      zatvoriVodic();
+      document.documentElement.classList.add('ucitava');
+      await ucitaj();
+      $('nalog').textContent = mejl;
+      cuvaj('nova-videno', true);
+      $('ekran-prijava').classList.add('skriveno');
+      $('ekran-rad').classList.remove('skriveno');
+      document.documentElement.classList.remove('ucitava');
+      if (kodIzUrla) { const kod = kodIzUrla; kodIzUrla = null; history.replaceState(null, '', OVDE); procitan(kod); }
+      clearInterval(osvezavanje);
+      osvezavanje = setInterval(() => { if (!salje && !saljeRed && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
+      posalji();
+    } catch (e) {
+      prikaziPrijavu('');
+      greskaPrijave(e);
+    }
+  }
+  function odjavi() {
+    // Opoziv kod Google-a: sledeća prijava ide kroz ceo tok (izbor naloga, Continue), kao kod novog skenera.
+    const t = token;
+    token = null; tokenDo = 0; mejl = '';
+    cuvaj('nova-token', null); cuvaj('nova-stanje', null);
+    try { if (t && !t.startsWith('s1.') && window.google && google.accounts) google.accounts.oauth2.revoke(t, () => {}); } catch (e) {}
+    clearInterval(osvezavanje);
+    prikaziPrijavu('');
+  }
+  $('odjava').addEventListener('click', () => prozor({
+    ikona: 'i-odjava', naslov: 'Odjaviti se?',
+    tekst: 'Prijava i Google dozvola biće obrisane sa ovog telefona' + (mejl ? ':<br><span class="mejl">' + esc(mejl) + '</span><br>' : '. ')
+      + 'Za dalje skeniranje moraćete ponovo da prođete prijavu.',
+    dugmad: [{ tekst: 'Odjavi se', vrsta: 'glavno', akcija: odjavi }, { tekst: 'Otkaži' }],
+  }));
+  function prijava() {
+    $('prijava-poruka').textContent = '';
+    traziToken(token || mejl ? '' : 'select_account').then(pocni).catch(greskaPrijave);
+  }
+  if (povratakObrada) povratakObrada.then(pocni).catch((e) => { prikaziPrijavu(''); greskaPrijave(e); });
+  else if (token) pocni();
+  else if (kodIzUrla) $('prijava-poruka').textContent = 'Prijavite se, pa se gost upisuje sam.';
+  if (!token && !povratakObrada) idiNa(0);
+</script>
+</body>
+</html>

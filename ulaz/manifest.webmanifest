@@ -1,6 +1,6 @@
 {
-  "name": "Dodela zahvalnica (nova prijava)",
-  "short_name": "Zahvalnice 2",
+  "name": "Dodela zahvalnica – ulaz",
+  "short_name": "Ulaz",
   "description": "Evidencija dolaska gostiju na dodelu zahvalnica",
   "lang": "sr",
   "start_url": "./",
