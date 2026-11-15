@@ -910,9 +910,11 @@
     let klasa = 'lose', html = '';
     if (r.status === 'ok') {
       klasa = 'ok';
-      html = ikona('i-ok') + '<div class="naslov">UPISAN</div><div class="ime">' + ime(r.gost) + '</div>'
-        + '<div class="detalj">' + esc(r.gost.uloga) + ' · broj ' + esc(r.gost.broj) + '</div>'
-        + (r.gost.mesto ? blokMesta(saGostima(r.gost)) : '<div class="mesto-gosta">Nema rezervisano mesto</div>');
+      const lj = r.ljudi || saGostima(r.gost);
+      const naslov = !r.novo ? 'UPISAN' : lj.length > 1 ? 'MESTA DODELJENA' : 'MESTO DODELJENO';
+      html = ikona('i-ok') + '<div class="naslov">' + naslov + '</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">' + esc(opisGosta(r.gost)) + '</div>'
+        + (r.gost.mesto ? blokMesta(lj) : '<div class="mesto-gosta">Nema rezervisano mesto</div>');
     } else if (r.status === 'vec') {
       html = ikona('i-x') + '<div class="naslov">VEĆ UŠAO</div><div class="ime">' + ime(r.gost) + '</div>'
         + '<div class="detalj">u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '</div>'
@@ -1136,31 +1138,7 @@
     $('q').blur();
     otvoriOsobu(g);
   });
-  async function rucniUpis(g, dugme) {
-    if (salje) return;
-    salje = true;
-    dugme.classList.add('radi');
-    dugme.innerHTML = '<span class="vrti"></span>Upisujem…';
-    $('prozor-dugmad').querySelectorAll('button').forEach((x) => (x.disabled = true));
-    const r = await upisiGosta('broj', g.broj);
-    salje = false;
-    trazi();
-    const zatvori = { tekst: 'Zatvori' };
-    if (r.status === 'ok') {
-      ton(true);
-      prozor({ ikona: 'i-ok', klasa: 'ok', naslov: 'Upisan', tekst: '<span class="ime-gosta">' + ime(r.gost) + '</span><br>u ' + esc(r.gost.vreme), dugmad: [zatvori] });
-    } else {
-      ton(false);
-      const p = {
-        vec: ['i-x', 'Već je ušao', '<span class="ime-gosta">' + (r.gost ? ime(r.gost) : '') + '</span><br>u ' + esc(r.gost && r.gost.vreme) + ', upisao ' + esc(r.gost && r.gost.upisao)],
-        pristup: ['i-x', 'Nemate pristup', 'Nalog ' + esc(mejl) + ' nema pravo na tabelu gostiju. Javite štabu ovaj mejl.'],
-        istekla: ['i-pazi', 'Prijava je istekla', 'Gost nije upisan. Prijavite se ponovo, pa ga upišite.'],
-        nema: ['i-pazi', 'Nema na spisku', 'Gost nije pronađen u tabeli.'],
-      }[r.status] || ['i-pazi', 'Nije upisano', esc(r.poruka)];
-      prozor({ ikona: p[0], klasa: 'lose', naslov: p[1], tekst: p[2],
-        dugmad: r.status === 'istekla' ? [{ tekst: 'Prijavite se ponovo', vrsta: 'glavno', akcija: () => produzi().catch(() => {}) }, zatvori] : [zatvori] });
-    }
-  }
+
 
 
   // ---------- Dolazak: osoba, njeni gosti i mesta za sve odjednom ----------
@@ -1205,7 +1183,6 @@
   function crtajOsobu() {
     if (!osoba) return;
     const g = osoba.g, telo = $('osoba-telo'), dno = $('osoba-dno');
-    if (osoba.rezultat) return crtajRezultatOsobe();
     $('osoba-naslov').textContent = g ? 'Dolazak' : 'Dodaj osobu';
     let html = '';
     if (g) {
@@ -1251,7 +1228,6 @@
     const u = e.target.closest('[data-ukloni-gosta]');
     if (u) { osoba.gosti.splice(Number(u.dataset.ukloniGosta), 1); return crtajOsobu(); }
     if (e.target.closest('#osoba-sala')) { const g = osoba.g; osoba.radi = false; zatvoriOsobu(); return setTimeout(() => otvoriSalu(g), 220); }
-    if (e.target.closest('#osoba-gotovo')) return zatvoriOsobu();
     if (e.target.closest('#osoba-akcija')) posaljiDolazak();
   });
   async function posaljiDolazak() {
@@ -1287,8 +1263,9 @@
       ton(false); return crtajOsobu();
     }
     const nadji = (x) => gosti.find((y) => y.broj === x.broj);
-    osoba.rezultat = [nadji(o.osoba)].concat(o.gosti.map(nadji)).filter(Boolean);
-    ton(true); crtajOsobu();
+    const lj = [nadji(o.osoba)].concat(o.gosti.map(nadji)).filter(Boolean);
+    zatvoriOsobu();
+    prikazi({ status: 'ok', gost: lj[0], ljudi: lj, novo: true });  // isti ekran kao posle skeniranja, ostaje do dodira
   }
   // Mesta po redovima: red i ulaz jednom, mapica reda (ulaz 1 levo) sa njihovim mestima, pa ko sedi na kom mestu.
   // Gost čije ime nosi domaćina iz istog spiska piše se kratko („Gost“, „Suprug“), domaćin je iznad.
@@ -1316,12 +1293,7 @@
           + kratko(g) + (jedanUlaz ? '' : ' <small>' + ulazOpis(g.ulaz) + '</small>') + '</span></li>').join('') + '</ul>') + '</div>';
     }).join('');
   }
-  function crtajRezultatOsobe() {
-    const lj = osoba.rezultat, glavni = lj[0];
-    $('osoba-naslov').textContent = lj.length > 1 ? 'Mesta dodeljena' : glavni.stigao ? 'Upisan' : 'Mesto dodeljeno';
-    $('osoba-telo').innerHTML = '<div class="gotovo-ikona"><svg><use href="#i-ok"/></svg></div>' + blokMesta(lj);
-    $('osoba-dno').innerHTML = '<button class="dugme glavno" id="osoba-gotovo">Gotovo</button>';
-  }
+
   $('otvori-dodaj').addEventListener('click', () => otvoriOsobu(null));
 
   // ---------- Sala: mapa, zaključavanje mesta i smeštanje više gostiju ----------

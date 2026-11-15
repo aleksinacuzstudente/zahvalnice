@@ -18,7 +18,8 @@ self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   if (/(^|\.)google(apis)?\.com$/.test(url.hostname)) return;
   e.respondWith(
-    fetch(e.request).then((odg) => {
+    // svoje fajlove uvek proverava na serveru (bez HTTP keša od 10 min), pa telefon odmah ima novu verziju
+    (url.origin === location.origin ? fetch(e.request.url, { cache: 'no-cache' }) : fetch(e.request)).then((odg) => {
       if (odg.ok && (url.origin === location.origin || url.hostname === 'cdn.jsdelivr.net')) {
         const kopija = odg.clone();
         caches.open(KES).then((c) => c.put(e.request, kopija));
