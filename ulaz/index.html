@@ -422,6 +422,9 @@
   .mapa .br-mesta.na-boji { fill: #fff; }
   .mapa .br-mesta.na-akcentu { fill: var(--na-akcentu); }
   /* Legenda pluta u dnu mape */
+  .mapa-savet { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; text-align: center; background: rgba(0, 0, 0, .55);
+    color: #fff; font-size: 20px; font-weight: 700; opacity: 0; pointer-events: none; transition: opacity .25s; }
+  .mapa-savet.vidi { opacity: 1; }
   .legenda { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 12px; padding: 6px 10px; border-radius: 10px; background: var(--pozadina);
     font-size: 12px; font-weight: 600; color: var(--tekst2); pointer-events: none; }
   .legenda span { display: inline-flex; align-items: center; gap: 5px; }
@@ -614,6 +617,7 @@
     <svg id="mapa-svg"><g id="mapa-g"></g></svg>
     <div class="mapa-alati"><button id="mapa-plus" aria-label="Uvećaj">+</button><button id="mapa-minus" aria-label="Umanji">−</button></div>
     <div class="legenda" id="legenda"></div>
+    <div class="mapa-savet" id="mapa-savet" aria-hidden="true"></div>
   </div>
   <div class="sala-kartica skriveno" id="sala-kartica" role="region" aria-label="Izabrana osoba"></div>
   <div class="sala-poruka skriveno" id="sala-poruka"></div>
@@ -1472,7 +1476,31 @@
   }
   mapa.addEventListener('pointerup', pusten);
   mapa.addEventListener('pointercancel', pusten);
-  mapa.addEventListener('wheel', (e) => { e.preventDefault(); const [x, y] = tackaSvg(e); zumiraj(e.deltaY < 0 ? 1.15 : 1 / 1.15, x, y); }, { passive: false });
+  // Miš i trackpad kao Google mape (štab 16.11.2026): zum je ⌘/Ctrl + skrol ili štipanje na trackpadu (stiže kao skrol sa Ctrl);
+  // običan skrol ne radi ništa na mapi, samo kratko pokaže savet. Prsti na ekranu idu preko pointer događaja iznad.
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+  $('mapa-savet').textContent = 'Za zum držite ' + (mac ? '⌘' : 'Ctrl') + ' i skrolujte, ili raširite dva prsta na trackpadu';
+  let savetDo = 0;
+  mapa.addEventListener('wheel', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      const d = Math.max(-40, Math.min(40, e.deltaMode === 1 ? e.deltaY * 20 : e.deltaY)), [x, y] = tackaSvg(e);
+      zumiraj(Math.exp(-d * 0.01), x, y);
+      $('mapa-savet').classList.remove('vidi');
+      return;
+    }
+    if (Math.abs(e.deltaY) + Math.abs(e.deltaX) < 4) return;
+    $('mapa-savet').classList.add('vidi');
+    clearTimeout(savetDo); savetDo = setTimeout(() => $('mapa-savet').classList.remove('vidi'), 1200);
+  }, { passive: false });
+  // Safari na Mac-u štipanje trackpada šalje kao gesture događaje (na telefonu prsti već idu preko pointer događaja)
+  let gestPocetak = null;
+  mapa.addEventListener('gesturestart', (e) => { if (prsti.size) return; gestPocetak = { s: pogled.s, c: tackaSvg(e) }; });
+  mapa.addEventListener('gesturechange', (e) => {
+    if (!gestPocetak || prsti.size) return;
+    zumiraj(gestPocetak.s * e.scale / pogled.s, gestPocetak.c[0], gestPocetak.c[1]);
+  });
+  mapa.addEventListener('gestureend', () => { gestPocetak = null; });
   $('mapa-plus').addEventListener('click', () => zumiraj(1.5, W / 2, (geometrija ? geometrija.H : 800) / 2));
   $('mapa-minus').addEventListener('click', () => zumiraj(1 / 1.5, W / 2, (geometrija ? geometrija.H : 800) / 2));
   function pokaziRed(deo, red, mesto) {
