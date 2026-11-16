@@ -335,10 +335,11 @@
   .prozor-kartica.lose .prozor-ikona { background: var(--lose); color: #fff; animation: iskoci .45s var(--opruga) both; }
 
 
-  /* Gore (štab 16.11.2026): [Mesta      0/364][Sala] na mestu i u veličini polja pretrage, oba otvaraju salu */
+  /* Gore (štab 16.11.2026): [Mesta      0/364][Sala] na mestu i u veličini polja pretrage; samo Sala je dugme,
+     a Mesta je ista bela površina (bez okvira, ista senka i zaobljenje kao dugme), da oba izgledaju iste visine */
   .napredak-red { display: flex; gap: 10px; }
-  button.napredak { flex: 1; min-width: 0; height: var(--vis-polja); justify-content: space-between; padding: 0 16px; border-radius: var(--radijus-polja);
-    border: 2px solid var(--linija); background: var(--povrs); text-align: left; }
+  .napredak-red .napredak { flex: 1; min-width: 0; height: var(--vis-polja); justify-content: space-between; padding: 0 16px;
+    border-radius: var(--radijus-dugmeta); background: var(--povrs); box-shadow: var(--senka); }
   .napredak .broj { font-size: var(--font-polja); }
   .napredak .oznaka-broja { font-size: var(--font-polja); color: var(--tekst2); }
   .napredak-red .sala-dugme { flex: none; padding: 0 20px; color: var(--akcent); }
@@ -515,10 +516,10 @@
 <div class="ekran skriveno" id="ekran-rad">
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
   <div class="napredak-red">
-    <button class="napredak" id="mesta-broj" aria-label="Mesta: koliko je stiglo, otvara salu">
+    <div class="napredak" id="mesta-broj" aria-label="Mesta: koliko je stiglo">
       <span class="oznaka-broja">Mesta</span><span class="ceka skriveno" id="ceka"></span>
       <span class="broj"><b id="stiglo">…</b><span id="od">/…</span></span>
-    </button>
+    </div>
     <button class="dugme sala-dugme" id="otvori-salu" aria-label="Sala: ko je stigao i ko gde sedi"><svg><use href="#i-sala"/></svg>Sala</button>
   </div>
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
@@ -1672,7 +1673,6 @@
     setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); }, 200);
   }
   $('otvori-salu').addEventListener('click', () => otvoriSalu());
-  $('mesta-broj').addEventListener('click', () => otvoriSalu());
   $('zatvori-salu').addEventListener('click', zatvoriSalu);
   $('sala-trazi').addEventListener('click', otvoriPretragu);
 
