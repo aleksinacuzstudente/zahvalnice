@@ -435,6 +435,12 @@
   /* Presnimljeno mesto (štab 16.11.2026): upadljivo, crno na žutom, svuda gde se mesto vidi */
   .presnimljeno { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #f5ecc2; color: #3a0a1c; font-size: 17px; line-height: 1.4;
     font-weight: 600; text-align: left; border: 3px solid #3a0a1c; }
+  /* Na mestu je neko drugi nego na pozivnici: ko je bio na pozivnici; dodir otvara njegovu karticu (štab 16.11.2026) */
+  .pozivnica-ovde { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 10px; padding: 12px 14px; border-radius: 14px;
+    background: var(--kamera); color: var(--na-kameri); font: inherit; font-size: 16px; line-height: 1.35; text-align: left; border: 0; cursor: pointer; }
+  .pozivnica-ovde span { flex: 1; }
+  .pozivnica-ovde svg { flex: none; width: 22px; height: 22px; }
+  .pozivnica-ovde:active { filter: brightness(1.15); }
   .presnimljeno b { display: block; font: 800 20px var(--naslovni); letter-spacing: .04em; margin-bottom: 2px; }
   .rezultat .presnimljeno { width: 100%; max-width: 420px; font-size: 19px; animation: ulaz .4s var(--glatko) .25s both; }
   .pretraga .znak.presnimljen { border-color: var(--upozorenje); color: var(--upozorenje-tekst); }
@@ -1355,6 +1361,15 @@
   }
   const upozorenjeMesta = (g) => { const p = saPozivnice(g); return p ? '<div class="presnimljeno"><b>MESTO PROMENJENO</b>Na pozivnici piše: ' + esc(p)
     + '<br>Sada sedi: ' + esc(g.deo + ' red ' + g.redSale + ' mesto ' + g.mesto) + '</div>' : ''; };
+  // Ko je na poslatoj pozivnici imao mesto osobe g, a sada sedi drugde (samo original sa pozivnice, list Presnimljeno)
+  function naPozivniciOvde(g) {
+    if (!g.mesto) return '';
+    const k = kljucMesta(g.deo, g.redSale, g.mesto);
+    const o = gosti.find((x) => x.broj !== g.broj && presnimljeni[x.broj] === k);
+    if (!o) return '';
+    return '<button class="pozivnica-ovde" data-broj="' + esc(String(o.broj)) + '"><span>Na pozivnici: <b>' + ime(o) + '</b> (sada '
+      + (o.mesto ? esc(opisMesta(kljucMesta(o.deo, o.redSale, o.mesto))) : 'bez mesta') + ')</span><svg><use href="#i-desno"/></svg></button>';
+  }
   let izabran = null;  // broj izabrane osobe
   let izabranoMesto = null;  // ključ izabranog slobodnog mesta (kartica „Slobodno mesto“)
   let promenaZa = null;  // „Zameni osobu“: broj vlasnika mesta izabranoMesto, koji dobija sledeće najbolje slobodno mesto
@@ -1648,7 +1663,7 @@
     const d = g.gostOd && gosti.find((x) => x.broj === g.gostOd);
     const uz = gosti.filter((x) => x.gostOd === g.broj).length;
     const sta = d ? 'gost od: ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga) + (uz ? ' · +' + brojGostiju(uz) : '');
-    const mesto = (g.mesto ? punoMesto(g) + '<br>' + ulazOpis(g.ulaz) : 'nema mesto') + upozorenjeMesta(g);
+    const mesto = (g.mesto ? punoMesto(g) + '<br>' + ulazOpis(g.ulaz) : 'nema mesto') + upozorenjeMesta(g) + naPozivniciOvde(g);
     const u = uToku.get(g.broj);
     const dno = u ? '<span class="k-stanje u-toku"><span class="vrti"></span>' + esc(u.tekst) + '</span>' : g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
         + '>Obriši dolazak</button>'
@@ -1660,6 +1675,8 @@
   }
   $('sala-kartica').addEventListener('click', async (e) => {
     if (e.target.closest('#zatvori-karticu')) return zatvoriKarticu();
+    const pz = e.target.closest('.pozivnica-ovde');
+    if (pz) { const o = gosti.find((x) => String(x.broj) === pz.dataset.broj); if (o) return izaberi(o, true); }
     if (e.target.closest('#k-promeni') && izabran) {  // štab 16.11.2026: na ovo mesto nova osoba, vlasnik dobija drugo
       const g = gosti.find((x) => x.broj === izabran);
       if (!g || !g.mesto || g.stigao) return;
