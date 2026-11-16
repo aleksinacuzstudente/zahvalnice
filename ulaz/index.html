@@ -1339,6 +1339,11 @@
 
   // Crtež: kao plan sale (bina gore, parter pa balkon, mesto 1 levo)
   const K = 34, R = 14, W = 1080;
+  // Okvir reda (od oznake reda do poslednjeg sedišta): traka izabranog reda i zum na red
+  function okvirReda(r) {
+    const x1 = W / 2 - (r.mesta - 1) * K / 2;
+    return [x1 - 30 - 13 * String(r.red).length - 14, x1 + (r.mesta - 1) * K + R + 10];
+  }
   let geometrija = null;
   function crtajSalu() {
     const g = $('mapa-g'), naMestu = gostNaMestu(), grupa = izabranaGrupa();
@@ -1362,7 +1367,7 @@
         t(x1 - 30, y + 7, r.red, 'oznaka', 'end');
         // štab 16.11.2026: red izabrane osobe je uokviren svetlom trakom (sa oznakom reda), a njeno sedište potamni
         if (ja && ja.mesto && ja.deo === deo && ja.redSale === r.red) {
-          const levo = x1 - 30 - 13 * String(r.red).length - 14, desno = x1 + (r.mesta - 1) * K + R + 10;
+          const [levo, desno] = okvirReda(r);
           pozadina.push('<rect x="' + levo + '" y="' + (y - R - 4) + '" width="' + (desno - levo) + '" height="' + (2 * R + 8) + '" rx="' + (R + 4) + '" class="red-izabran"/>');
         }
         for (let m = 1; m <= r.mesta; m++) {
@@ -1463,11 +1468,11 @@
   function pokaziRed(deo, red, mesto) {
     const y = geometrija && geometrija.redoviY[deo + '|' + red];
     if (y === undefined) return;
-    // ceo red (sa oznakom reda) u širini mape, red na sredini; mesto je u redu, pa se vidi
+    // ceo okvir reda (sa oznakom reda) u širini mape, uz razmak do ivica i dugmadi +/−, okvir po sredini
     const r = sala.find((x) => x.deo === deo && x.red === red), v = vidljivo();
-    const sirReda = (r ? (r.mesta - 1) * K : 600) + 2 * R + 110;
-    pogled.s = Math.max(1, Math.min(4, (v.x1 - v.x0) / sirReda));
-    pogled.x = (v.x0 + v.x1) / 2 - (W / 2) * pogled.s; pogled.y = v.h / 2 - y * pogled.s;
+    const [levo, desno] = r ? okvirReda(r) : [240, 840], razmak = 64 * jedinica();
+    pogled.s = Math.max(1, Math.min(4, (v.x1 - v.x0 - 2 * razmak) / (desno - levo)));
+    pogled.x = (v.x0 + v.x1) / 2 - ((levo + desno) / 2) * pogled.s; pogled.y = v.h / 2 - y * pogled.s;
     primeniPogled();
   }
 
