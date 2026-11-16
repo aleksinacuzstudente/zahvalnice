@@ -1354,7 +1354,7 @@
     + '<br>Sada sedi: ' + esc(g.deo + ' red ' + g.redSale + ' mesto ' + g.mesto) + '</div>' : ''; };
   let izabran = null;  // broj izabrane osobe
   let izabranoMesto = null;  // ključ izabranog slobodnog mesta (kartica „Slobodno mesto“)
-  let promenaZa = null;  // „Promeni mesto“: broj vlasnika mesta izabranoMesto, koji dobija sledeće najbolje slobodno mesto
+  let promenaZa = null;  // „Zameni osobu“: broj vlasnika mesta izabranoMesto, koji dobija sledeće najbolje slobodno mesto
   const kljucMesta = (deo, red, m) => deo + '|' + red + '|' + Number(m);
   const opisMesta = (m) => { const [d, r, n] = m.split('|'); return d + ' ' + r + '/' + n; };
   // ulaz kao na serveru: leva polovina reda je ulaz 1
@@ -1631,7 +1631,7 @@
       // štab 16.11.2026: ista dva puta kao na glavnom ekranu, bez gostiju (jedno mesto je za jednu osobu):
       // Pretraži = osoba sa spiska koja nema mesto, Dodaj osobu = osoba koje nema na spisku
       el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
-        + '<div class="k-ime">' + (vlasnik ? 'Promeni mesto' : 'Slobodno mesto') + '</div>'
+        + '<div class="k-ime">' + (vlasnik ? 'Zamena osobe' : 'Slobodno mesto') + '</div>'
         + '<div class="k-mesto">' + esc(d) + ' · red <b>' + esc(r) + '</b> · mesto <b>' + esc(n) + '</b><br>' + ulazOpis(ulazMesta([d, r, n])) + '</div>'
         + (pored ? '<div class="k-sta">' + pored + '</div>' : '')
         + '<div class="k-ko">' + (vlasnik ? 'Ko sedi ovde umesto: ' + ime(vlasnik) + '?' : 'Ko će sedeti ovde?') + '</div>'
@@ -1649,7 +1649,7 @@
     const u = uToku.get(g.broj);
     const dno = u ? '<span class="k-stanje u-toku"><span class="vrti"></span>' + esc(u.tekst) + '</span>' : g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
         + '>Obriši dolazak</button>'
-      : '<span class="k-stanje">nije stigao</span><span class="k-dugmad">' + (g.mesto && !upisujeKartica ? '<button class="dugme tiho" id="k-promeni">Promeni mesto</button>' : '')
+      : '<span class="k-stanje">nije stigao</span><span class="k-dugmad">' + (g.mesto && !upisujeKartica ? '<button class="dugme tiho" id="k-promeni">Zameni osobu</button>' : '')
         + '<button class="dugme glavno" id="k-upisi"' + (upisujeKartica ? ' disabled' : '') + '>'
         + (upisujeKartica ? '<span class="vrti"></span>Upisujem…' : g.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto') + '</button></span>';
     el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
