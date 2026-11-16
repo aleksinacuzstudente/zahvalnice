@@ -416,8 +416,11 @@
   .m-stigao { fill: var(--ok); stroke: none; }
   .mapa .prsten { fill: none; stroke: var(--akcent); stroke-width: 5; pointer-events: none; }
   .mapa .prsten.drugi { stroke-width: 3.5; stroke-dasharray: 6 4; }
+  .mapa .red-izabran { fill: var(--akcent); fill-opacity: .14; stroke: var(--akcent); stroke-opacity: .65; stroke-width: 2; pointer-events: none; }
+  .mapa .sediste-izabrano { fill: var(--akcent); stroke: none; pointer-events: none; }
   .mapa .br-mesta { font-size: 13px; font-weight: 800; }
   .mapa .br-mesta.na-boji { fill: #fff; }
+  .mapa .br-mesta.na-akcentu { fill: var(--na-akcentu); }
   /* Legenda pluta u dnu mape */
   .legenda { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 12px; padding: 6px 10px; border-radius: 10px; background: var(--pozadina);
     font-size: 12px; font-weight: 600; color: var(--tekst2); pointer-events: none; }
@@ -1339,8 +1342,9 @@
   let geometrija = null;
   function crtajSalu() {
     const g = $('mapa-g'), naMestu = gostNaMestu(), grupa = izabranaGrupa();
-    const prstenovi = [];
+    const prstenovi = [], pozadina = [];
     const el = [];
+    const ja = izabran && gosti.find((x) => x.broj === izabran);
     const t = (x, y, s, cls, a) => el.push('<text x="' + x + '" y="' + y + '" class="' + (cls || '') + '" text-anchor="' + (a || 'middle') + '">' + s + '</text>');
     let y = 30;
     el.push('<rect x="240" y="' + y + '" width="600" height="52" rx="6" class="bina"/>'); t(W / 2, y + 35, 'BINA', 'bina-t');
@@ -1356,19 +1360,26 @@
         redoviY[deo + '|' + r.red] = y;
         const x1 = W / 2 - (r.mesta - 1) * K / 2;
         t(x1 - 30, y + 7, r.red, 'oznaka', 'end');
+        // štab 16.11.2026: red izabrane osobe je uokviren svetlom trakom (sa oznakom reda), a njeno sedište potamni
+        if (ja && ja.mesto && ja.deo === deo && ja.redSale === r.red) {
+          const levo = x1 - 30 - 13 * String(r.red).length - 14, desno = x1 + (r.mesta - 1) * K + R + 10;
+          pozadina.push('<rect x="' + levo + '" y="' + (y - R - 4) + '" width="' + (desno - levo) + '" height="' + (2 * R + 8) + '" rx="' + (R + 4) + '" class="red-izabran"/>');
+        }
         for (let m = 1; m <= r.mesta; m++) {
           const km = kljucMesta(deo, r.red, m), x = x1 + (m - 1) * K, gost = naMestu[km];
           el.push('<circle data-m="' + km + '" cx="' + x + '" cy="' + y + '" r="' + R + '" class="m-' + stanjeMesta(km, naMestu) + '"/>');
-          if (gost && grupa.svi.has(gost.broj)) {  // izabrana osoba i njeni: prsten i broj mesta (uvećano se ne vide oznake redova)
-            prstenovi.push('<circle cx="' + x + '" cy="' + y + '" r="' + (R + 6) + '" class="prsten' + (gost.broj === izabran ? '' : ' drugi') + '"/>');
-            prstenovi.push('<text x="' + x + '" y="' + (y + 5) + '" text-anchor="middle" class="br-mesta' + (gost.stigao ? ' na-boji' : '') + '">' + m + '</text>');
+          if (gost && grupa.svi.has(gost.broj)) {  // izabrana osoba: tamno sedište; njeni: isprekidan prsten; svima broj mesta
+            const ona = gost.broj === izabran;
+            prstenovi.push(ona ? '<circle cx="' + x + '" cy="' + y + '" r="' + (R + 2) + '" class="sediste-izabrano"/>'
+              : '<circle cx="' + x + '" cy="' + y + '" r="' + (R + 6) + '" class="prsten drugi"/>');
+            prstenovi.push('<text x="' + x + '" y="' + (y + 5) + '" text-anchor="middle" class="br-mesta' + (ona ? ' na-akcentu' : gost.stigao ? ' na-boji' : '') + '">' + m + '</text>');
           }
         }
         y += K + 4;
       });
       if (deo === 'Parter') { y += 8; t(60, y + 8, 'Ulaz 1', 'ulaz', 'start'); t(W - 60, y + 8, 'Ulaz 2', 'ulaz', 'end'); y += 60; }
     });
-    g.innerHTML = el.concat(prstenovi).join('');
+    g.innerHTML = pozadina.concat(el, prstenovi).join('');
     const H = y + 10;
     if (!geometrija || geometrija.H !== H) { geometrija = { H, redoviY }; $('mapa-svg').setAttribute('viewBox', '0 0 ' + W + ' ' + H); $('mapa-svg').setAttribute('preserveAspectRatio', 'xMidYMin meet'); }
     geometrija.redoviY = redoviY;
