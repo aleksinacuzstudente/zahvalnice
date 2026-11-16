@@ -95,7 +95,7 @@
     background: var(--upozorenje); color: var(--na-boji); font-weight: 700; font-size: 15px; animation: ulaz .3s var(--glatko) both; }
   .istice span { white-space: nowrap; text-decoration: underline; }
   .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .nalogred .mejl { min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nalogred .mejl { min-width: 0; padding: 9px 16px; border: 1.5px solid transparent; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
     color: var(--tekst); font-size: 14px; font-weight: 600; }
 
@@ -197,6 +197,7 @@
   .napredak { display: flex; align-items: center; gap: 14px; }
   .napredak .broj { white-space: nowrap; font-family: var(--telo); font-size: 18px; line-height: 1; font-weight: 500; color: var(--tekst2); }
   .napredak .broj b { display: inline-block; font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
+  .napredak #od { font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
   .napredak .broj b.skok { animation: skok .45s var(--opruga); }
   .napredak .ceka { font-size: 14px; font-weight: 700; color: var(--tekst2); }
   .napredak .ceka.nema-veze { color: var(--upozorenje); }
@@ -381,8 +382,7 @@
 
   /* Gore: Stiglo X od Y je dugme koje otvara salu */
   button.napredak { width: 100%; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: var(--povrs); box-shadow: var(--senka); text-align: left; }
-  .napredak .broj { font-size: 20px; }
-  .napredak .broj b { font-size: 26px; }
+  .napredak .broj { font-size: 20px; }  /* štab 16.11.2026: „Stiglo 0/364“, sve iste veličine */
   .sala-dugme { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--akcent); font-size: 16px; }
   .sala-dugme svg { width: 22px; height: 22px; }
 
@@ -553,7 +553,7 @@
 <div class="ekran skriveno" id="ekran-rad">
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
   <button class="napredak" id="otvori-salu" aria-label="Sala: ko je stigao i ko gde sedi">
-    <div class="broj">Stiglo <b id="stiglo">…</b> <span id="od">od …</span> <span class="ceka skriveno" id="ceka"></span></div>
+    <div class="broj">Stiglo <b id="stiglo">…</b><span id="od">/…</span> <span class="ceka skriveno" id="ceka"></span></div>
     <span class="sala-dugme"><svg><use href="#i-sala"/></svg>Sala<svg><use href="#i-desno"/></svg></span>
   </button>
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
@@ -773,7 +773,7 @@
     if (s !== prethodno && prethodno >= 0) { b.classList.remove('skok'); void b.offsetWidth; b.classList.add('skok'); }
     prethodno = s;
     b.textContent = s;
-    $('od').textContent = 'od ' + gosti.filter((g) => g.potvrdio || g.mesto).length;
+    $('od').textContent = '/' + gosti.filter((g) => g.potvrdio || g.mesto).length;
     if (!$('sala').classList.contains('skriveno')) crtajSalu();
   }
 
