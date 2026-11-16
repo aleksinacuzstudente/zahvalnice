@@ -401,17 +401,20 @@
   .k-stanje { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; }
   .k-stanje::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--povrs2); }
   .k-stanje.ok::before { background: var(--ok); }
-  .k-stanje.u-toku { min-height: 48px; color: var(--tekst2); }
+  .k-stanje.u-toku { min-height: var(--vis-polja); color: var(--tekst2); }
   .k-stanje.u-toku::before { display: none; }
   .k-stanje.u-toku .vrti { width: 18px; height: 18px; border-width: 2.5px; }
   .k-ko { margin: 14px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--tekst2); }
   .k-pomoc { margin-top: 8px; font-size: 13px; color: var(--tekst2); }
-  .k-telo .dugmad .dugme { box-shadow: none; background: var(--pozadina); }
-  .k-dno .dugme { min-height: 48px; padding: 0 18px; flex: none; }
+  /* Dugmad u kartici (štab 16.11.2026: „uskladi visine“): sva iste visine (--vis-polja) i veličine slova; po važnosti
+     glavno (puno, akcent; uvek desno: Pretraži, Upiši dolazak), sporedno (puno, sivo: Dodaj osobu) i treće (okvir: Zameni osobu) */
+  .k-telo .dugme { min-height: var(--vis-polja); font-size: 16px; box-shadow: none; }
+  .k-telo .dugmad .dugme:not(.glavno) { background: var(--pozadina); }
+  .k-dno .dugme { padding: 0 18px; flex: none; }
   .k-dno:has(.k-dugmad) { flex-wrap: wrap; }
-  .k-dugmad { flex: 1 1 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .k-dugmad { flex: 1 1 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 10px; }
   .k-dugmad .dugme { font-size: 16px; white-space: nowrap; padding: 0 10px; }
-  .k-dno .dugme.tiho { background: none; box-shadow: none; border: 1.5px solid var(--linija); color: var(--tekst); font-size: 15px; padding: 0 14px; }
+  .k-dno .dugme.tiho { background: none; border: 1.5px solid var(--linija); color: var(--tekst); }
   /* Brisanje dolaska: crveno samo u prozoru, u kartici tiho (ne poziva na dodir) */
   .k-dno .dugme.brisi { min-height: 40px; padding: 0 14px; font-size: 14px; background: none; box-shadow: none; color: var(--lose-tekst); border: 1.5px solid var(--linija); }
   .prozor-dugmad .dugme.brisi { background: var(--lose); color: #fff; }
@@ -1635,9 +1638,9 @@
         + '<div class="k-mesto">' + esc(d) + ' · red <b>' + esc(r) + '</b> · mesto <b>' + esc(n) + '</b><br>' + ulazOpis(ulazMesta([d, r, n])) + '</div>'
         + (pored ? '<div class="k-sta">' + pored + '</div>' : '')
         + '<div class="k-ko">' + (vlasnik ? 'Ko sedi ovde umesto: ' + ime(vlasnik) + '?' : 'Ko će sedeti ovde?') + '</div>'
-        + '<div class="dugmad"><button class="dugme" id="k-trazi-ovde"><svg><use href="#i-trazi"/></svg>Pretraži</button>'
-        + '<button class="dugme" id="k-dodaj-ovde"><svg><use href="#i-plus"/></svg>Dodaj osobu</button></div>'
-        + '<div class="k-pomoc">' + (vlasnik ? ime(vlasnik) + ' dobija sledeće najbolje slobodno mesto. ' : '') + 'Pretraži: sa spiska, a nema mesto. Dodaj osobu: nema je na spisku.</div></div>';
+        + '<div class="dugmad"><button class="dugme" id="k-dodaj-ovde"><svg><use href="#i-plus"/></svg>Dodaj osobu</button>'
+        + '<button class="dugme glavno" id="k-trazi-ovde"><svg><use href="#i-trazi"/></svg>Pretraži</button></div>'
+        + '<div class="k-pomoc">' + (vlasnik ? ime(vlasnik) + ' dobija sledeće najbolje slobodno mesto. ' : '') + 'Dodaj osobu: nema je na spisku. Pretraži: sa spiska, a nema mesto.</div></div>';
       return;
     }
     const g = izabran && gosti.find((x) => x.broj === izabran);
