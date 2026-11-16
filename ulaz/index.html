@@ -1648,10 +1648,10 @@
     prozor({ klasa: 'kompaktno', naslov: 'Obrisati dolazak?', tekst: '<span class="ime-gosta">' + ime(g) + '</span><br>'
       + (d ? 'gost od ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga)) + (g.mesto ? ' · ' + esc(g.redSale + '/' + g.mesto) : '') + ' · ušao ' + esc(g.vreme)
       + (saUlaza ? '<br>Dodat na ulazu: oslobađa se i mesto.' : '')
-      + '<label class="brisi-polje"><span>Upišite broj gosta <b>' + esc(broj) + '</b></span><input id="brisi-unos" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" aria-label="Broj gosta za potvrdu"></label>',
+      + '<label class="brisi-polje"><span>Upišite broj gosta <b>' + esc(broj) + '</b></span><input id="brisi-unos" name="potvrda-' + Date.now() + '" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" aria-label="Broj gosta za potvrdu"></label>',
       dugmad: [{ tekst: 'Obriši dolazak', vrsta: 'brisi', akcija: () => obrisiDolazak(broj) }, { tekst: 'Nazad' }] });
     const dugme = $('prozor-dugmad').querySelector('.brisi'), unos = $('brisi-unos');
-    dugme.disabled = true;
+    unos.value = ''; dugme.disabled = true;
     unos.addEventListener('input', () => { dugme.disabled = unos.value.trim() !== broj; });
     unos.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !dugme.disabled) dugme.click(); });
     unos.focus({ preventScroll: true });  // odmah u dodiru, inače iPhone ne otvori tastaturu
@@ -1793,7 +1793,9 @@
   idiNa(0);
 
   // ---------- Prozor: potvrda i greške ----------
+  let tajmerProzora = null;
   function prozor({ ikona, klasa, naslov, tekst, dugmad }) {
+    clearTimeout(tajmerProzora);  // brzo ponovno otvaranje: zatvaranje koje kasni ne sme da sakrije nov prozor
     $('prozor').querySelector('.prozor-kartica').className = 'prozor-kartica' + (klasa ? ' ' + klasa : '');
     $('prozor-ikona').innerHTML = '<svg><use href="#' + (ikona || 'i-pazi') + '"/></svg>';
     $('prozor-naslov').textContent = naslov;
@@ -1811,7 +1813,9 @@
   function zatvoriProzor() {
     $('prozor').classList.add('izlazi');
     const a = document.activeElement; if (a && $('prozor').contains(a)) a.blur();
-    setTimeout(() => { $('prozor').classList.add('skriveno'); $('prozor').style.top = ''; $('prozor').style.height = ''; }, 180);
+    $('prozor').querySelectorAll('input').forEach((x) => { x.value = ''; });  // štab 16.11.2026: unos se ne pamti posle zatvaranja
+    clearTimeout(tajmerProzora);
+    tajmerProzora = setTimeout(() => { $('prozor').classList.add('skriveno'); $('prozor').style.top = ''; $('prozor').style.height = ''; }, 180);
   }
   $('prozor').addEventListener('click', (e) => { if (e.target === $('prozor')) zatvoriProzor(); });
 
