@@ -1342,7 +1342,7 @@
   // Okvir reda (od oznake reda do poslednjeg sedišta): traka izabranog reda i zum na red
   function okvirReda(r) {
     const x1 = W / 2 - (r.mesta - 1) * K / 2;
-    return [x1 - 30 - 13 * String(r.red).length - 14, x1 + (r.mesta - 1) * K + R + 10];
+    return [x1 - 30 - 13 * String(r.red).length - 14, x1 + (r.mesta - 1) * K + R + 4];  // desni kraj trake je koncentričan sa poslednjim sedištem
   }
   let geometrija = null;
   function crtajSalu() {
@@ -1364,9 +1364,10 @@
         if (deo === 'Parter' && i === 5) y += 22;   // prolaz između V i VI reda
         redoviY[deo + '|' + r.red] = y;
         const x1 = W / 2 - (r.mesta - 1) * K / 2;
-        t(x1 - 30, y + 7, r.red, 'oznaka', 'end');
+        const izabranRed = ja && ja.mesto && ja.deo === deo && ja.redSale === r.red;
+        t(x1 - 30, y + 7, r.red, 'oznaka' + (izabranRed ? ' oznaka-izabrana' : ''), 'end');
         // štab 16.11.2026: red izabrane osobe je uokviren svetlom trakom (sa oznakom reda), a njeno sedište potamni
-        if (ja && ja.mesto && ja.deo === deo && ja.redSale === r.red) {
+        if (izabranRed) {
           const [levo, desno] = okvirReda(r);
           pozadina.push('<rect x="' + levo + '" y="' + (y - R - 4) + '" width="' + (desno - levo) + '" height="' + (2 * R + 8) + '" rx="' + (R + 4) + '" class="red-izabran"/>');
         }
@@ -1385,6 +1386,15 @@
       if (deo === 'Parter') { y += 8; t(60, y + 8, 'Ulaz 1', 'ulaz', 'start'); t(W - 60, y + 8, 'Ulaz 2', 'ulaz', 'end'); y += 60; }
     });
     g.innerHTML = pozadina.concat(el, prstenovi).join('');
+    // levo od oznake reda mali razmak kao oko sedišta (širina oznake se meri, ne procenjuje)
+    const traka = g.querySelector('.red-izabran'), oznaka = g.querySelector('.oznaka-izabrana');
+    if (traka && oznaka) {
+      const bb = oznaka.getBBox();
+      if (bb.width) {
+        const levo = bb.x - 8, desno = +traka.getAttribute('x') + +traka.getAttribute('width');
+        traka.setAttribute('x', levo); traka.setAttribute('width', desno - levo);
+      }
+    }
     const H = y + 10;
     if (!geometrija || geometrija.H !== H) { geometrija = { H, redoviY }; $('mapa-svg').setAttribute('viewBox', '0 0 ' + W + ' ' + H); $('mapa-svg').setAttribute('preserveAspectRatio', 'xMidYMin meet'); }
     geometrija.redoviY = redoviY;
@@ -1470,7 +1480,8 @@
     if (y === undefined) return;
     // ceo okvir reda (sa oznakom reda) u širini mape, uz razmak do ivica i dugmadi +/−, okvir po sredini
     const r = sala.find((x) => x.deo === deo && x.red === red), v = vidljivo();
-    const [levo, desno] = r ? okvirReda(r) : [240, 840], razmak = 64 * jedinica();
+    const traka = $('mapa-g').querySelector('.red-izabran'), razmak = 64 * jedinica();
+    const [levo, desno] = traka ? [+traka.getAttribute('x'), +traka.getAttribute('x') + +traka.getAttribute('width')] : r ? okvirReda(r) : [240, 840];
     pogled.s = Math.max(1, Math.min(4, (v.x1 - v.x0 - 2 * razmak) / (desno - levo)));
     pogled.x = (v.x0 + v.x1) / 2 - ((levo + desno) / 2) * pogled.s; pogled.y = v.h / 2 - y * pogled.s;
     primeniPogled();
