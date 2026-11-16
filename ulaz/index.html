@@ -408,6 +408,10 @@
   .k-pomoc { margin-top: 8px; font-size: 13px; color: var(--tekst2); }
   .k-telo .dugmad .dugme { box-shadow: none; background: var(--pozadina); }
   .k-dno .dugme { min-height: 48px; padding: 0 18px; flex: none; }
+  .k-dno:has(.k-dugmad) { flex-wrap: wrap; }
+  .k-dugmad { flex: 1 1 100%; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .k-dugmad .dugme { font-size: 16px; white-space: nowrap; padding: 0 10px; }
+  .k-dno .dugme.tiho { background: none; box-shadow: none; border: 1.5px solid var(--linija); color: var(--tekst); font-size: 15px; padding: 0 14px; }
   /* Brisanje dolaska: crveno samo u prozoru, u kartici tiho (ne poziva na dodir) */
   .k-dno .dugme.brisi { min-height: 40px; padding: 0 14px; font-size: 14px; background: none; box-shadow: none; color: var(--lose-tekst); border: 1.5px solid var(--linija); }
   .prozor-dugmad .dugme.brisi { background: var(--lose); color: #fff; }
@@ -1156,7 +1160,8 @@
       if (g.mesto) return;  // ko ima mesto se ne premešta
       const m = pretragaMesto;
       return prozor({ ikona: 'i-korisnik', naslov: 'Upisati i smestiti ovde?', tekst: '<span class="ime-gosta">' + ime(g) + '</span><br>' + esc(opisGosta(g)) + '<br>'
-        + esc(m[0]) + ' · red <b>' + esc(m[1]) + '</b> · mesto <b>' + esc(m[2]) + '</b>',
+        + esc(m[0]) + ' · red <b>' + esc(m[1]) + '</b> · mesto <b>' + esc(m[2]) + '</b>'
+        + (promenaZa ? '<br>' + ime(gosti.find((x) => x.broj === promenaZa) || {}) + ' dobija drugo mesto.' : ''),
         dugmad: [{ tekst: 'Upiši i smesti', vrsta: 'glavno', akcija: () => smestiNaMesto(g.broj, m) }, { tekst: 'Otkaži' }] });
     }
     zatvoriPretragu();
@@ -1181,7 +1186,7 @@
   let osoba = null;  // {g | null (nova), novo, gosti: [], radi, greska, rezultat}
   function otvoriOsobu(g, mesto) {  // mesto: [deo, red, broj] izabrano u sali (samo za novu osobu)
     zatvoriPretragu();
-    osoba = { g: g || null, mesto: g ? null : mesto || null, novo: '', gosti: [], radi: false, greska: '', rezultat: null };
+    osoba = { g: g || null, mesto: g ? null : mesto || null, presnimi: !g && mesto ? promenaZa : null, novo: '', gosti: [], radi: false, greska: '', rezultat: null };
     const el = $('osoba');
     el.classList.remove('skriveno', 'izlazi');
     document.documentElement.classList.add('trazi');
@@ -1216,7 +1221,8 @@
     } else {
       html += '<div class="polje"><svg><use href="#i-nova-osoba"/></svg><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
         + (osoba.mesto ? '<div class="stanje">' + esc(osoba.mesto[0]) + ' · red <b>' + esc(osoba.mesto[1]) + '</b> · mesto <b>' + esc(osoba.mesto[2]) + '</b><br>'
-            + ulazOpis(ulazMesta(osoba.mesto)) + '</div><p class="uputstvo">Osoba koje nema na spisku sedeće na ovo mesto, bez gostiju.</p>'
+            + ulazOpis(ulazMesta(osoba.mesto)) + '</div><p class="uputstvo">Osoba koje nema na spisku sedeće na ovo mesto, bez gostiju.'
+            + (osoba.presnimi ? ' ' + ime(gosti.find((x) => x.broj === osoba.presnimi) || {}) + ' dobija drugo mesto.' : '') + '</p>'
           : '<p class="uputstvo">Osoba koje nema na spisku. Dobiće mesto sa svojim gostima.</p>');
     }
     if (!osoba.mesto) html += '<h3>Gosti</h3>' + osoba.gosti.map((x, i) => '<div class="red-gosta"><div class="polje" style="flex:1"><svg><use href="#i-korisnik"/></svg><input data-gost="' + i
@@ -1276,6 +1282,7 @@
     const zahtev = { gosti: osoba.gosti.map((x) => x.trim()) };
     if (osoba.g) zahtev.broj = osoba.g.broj; else zahtev.novo = osoba.novo.trim();
     if (osoba.mesto) zahtev.mesto = osoba.mesto;
+    if (osoba.presnimi) zahtev.presnimi = true;
     let o;
     try { o = await server('dolazak', zahtev); }
     catch (e) {
@@ -1298,7 +1305,7 @@
     const nadji = (x) => gosti.find((y) => y.broj === x.broj);
     const lj = [nadji(o.osoba)].concat(o.gosti.map(nadji)).filter(Boolean);
     zatvoriOsobu();
-    if (osoba && osoba.mesto && lj[0] && !$('sala').classList.contains('skriveno')) { izabranoMesto = null; izabran = lj[0].broj; crtajSalu(); }
+    if (osoba && osoba.mesto && lj[0] && !$('sala').classList.contains('skriveno')) { izabranoMesto = null; promenaZa = null; izabran = lj[0].broj; crtajSalu(); if (o.pomeren) poruka('Premešten' + pomerenTekst(o.pomeren).slice(1)); }
     prikazi({ status: 'ok', gost: lj[0], ljudi: lj, novo: true });  // isti ekran kao posle skeniranja, ostaje do dodira
   }
   // Mesta po redovima: red i ulaz jednom, mapica reda (ulaz 1 levo) sa njihovim mestima, pa ko sedi na kom mestu.
@@ -1347,6 +1354,7 @@
     + '<br>Sada sedi: ' + esc(g.deo + ' red ' + g.redSale + ' mesto ' + g.mesto) + '</div>' : ''; };
   let izabran = null;  // broj izabrane osobe
   let izabranoMesto = null;  // ključ izabranog slobodnog mesta (kartica „Slobodno mesto“)
+  let promenaZa = null;  // „Promeni mesto“: broj vlasnika mesta izabranoMesto, koji dobija sledeće najbolje slobodno mesto
   const kljucMesta = (deo, red, m) => deo + '|' + red + '|' + Number(m);
   const opisMesta = (m) => { const [d, r, n] = m.split('|'); return d + ' ' + r + '/' + n; };
   // ulaz kao na serveru: leva polovina reda je ulaz 1
@@ -1574,7 +1582,7 @@
   function izaberiMesto(m) {
     const otvorena = !$('sala-kartica').classList.contains('skriveno');
     if (!otvorena) pogledPre = { s: pogled.s, x: pogled.x, y: pogled.y };
-    izabran = null; izabranoMesto = m;
+    izabran = null; izabranoMesto = m; promenaZa = null;
     $('sala-kartica').classList.remove('skriveno');
     $('sala').classList.add('ima-karticu');
     crtajSalu();
@@ -1586,14 +1594,14 @@
   function izaberi(g, zum) {
     const otvorena = !$('sala-kartica').classList.contains('skriveno');
     if (!otvorena) pogledPre = { s: pogled.s, x: pogled.x, y: pogled.y };
-    izabran = g.broj; izabranoMesto = null;
+    izabran = g.broj; izabranoMesto = null; promenaZa = null;
     $('sala-kartica').classList.remove('skriveno');
     $('sala').classList.add('ima-karticu');
     crtajSalu();
     if ((!otvorena || zum) && g.mesto) requestAnimationFrame(() => pokaziRed(g.deo, g.redSale, g.mesto));
   }
   function zatvoriKarticu() {
-    izabran = null; izabranoMesto = null;
+    izabran = null; izabranoMesto = null; promenaZa = null;
     $('sala-kartica').classList.add('skriveno');
     $('sala').classList.remove('ima-karticu');
     Object.assign(pogled, pogledPre || { s: 1, x: 0, y: 0 });
@@ -1615,20 +1623,21 @@
     const el = $('sala-kartica');
     if (izabranoMesto) {
       const naMestu = gostNaMestu(), zauzeo = naMestu[izabranoMesto];
-      if (zauzeo) { izabranoMesto = null; izabran = zauzeo.broj; return crtajSalu(); }  // mesto je u međuvremenu dobio neko: kartica te osobe
+      const vlasnik = promenaZa && zauzeo && zauzeo.broj === promenaZa && !zauzeo.stigao ? zauzeo : null;
+      if (zauzeo && !vlasnik) { izabranoMesto = null; promenaZa = null; izabran = zauzeo.broj; return crtajSalu(); }  // mesto je u međuvremenu dobio neko: kartica te osobe
       const [d, r, n] = izabranoMesto.split('|'), sused = (x) => naMestu[kljucMesta(d, r, x)];
       const levo = sused(Number(n) - 1), desno = sused(Number(n) + 1);
       const pored = [levo && 'levo: ' + ime(levo), desno && 'desno: ' + ime(desno)].filter(Boolean).join(' · ');
       // štab 16.11.2026: ista dva puta kao na glavnom ekranu, bez gostiju (jedno mesto je za jednu osobu):
       // Pretraži = osoba sa spiska koja nema mesto, Dodaj osobu = osoba koje nema na spisku
       el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
-        + '<div class="k-ime">Slobodno mesto</div>'
+        + '<div class="k-ime">' + (vlasnik ? 'Promeni mesto' : 'Slobodno mesto') + '</div>'
         + '<div class="k-mesto">' + esc(d) + ' · red <b>' + esc(r) + '</b> · mesto <b>' + esc(n) + '</b><br>' + ulazOpis(ulazMesta([d, r, n])) + '</div>'
         + (pored ? '<div class="k-sta">' + pored + '</div>' : '')
-        + '<div class="k-ko">Ko će sedeti ovde?</div>'
+        + '<div class="k-ko">' + (vlasnik ? 'Ko sedi ovde umesto: ' + ime(vlasnik) + '?' : 'Ko će sedeti ovde?') + '</div>'
         + '<div class="dugmad"><button class="dugme" id="k-trazi-ovde"><svg><use href="#i-trazi"/></svg>Pretraži</button>'
         + '<button class="dugme" id="k-dodaj-ovde"><svg><use href="#i-plus"/></svg>Dodaj osobu</button></div>'
-        + '<div class="k-pomoc">Pretraži: sa spiska, a nema mesto. Dodaj osobu: nema je na spisku.</div></div>';
+        + '<div class="k-pomoc">' + (vlasnik ? ime(vlasnik) + ' dobija sledeće najbolje slobodno mesto. ' : '') + 'Pretraži: sa spiska, a nema mesto. Dodaj osobu: nema je na spisku.</div></div>';
       return;
     }
     const g = izabran && gosti.find((x) => x.broj === izabran);
@@ -1640,13 +1649,20 @@
     const u = uToku.get(g.broj);
     const dno = u ? '<span class="k-stanje u-toku"><span class="vrti"></span>' + esc(u.tekst) + '</span>' : g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
         + '>Obriši dolazak</button>'
-      : '<span class="k-stanje">nije stigao</span><button class="dugme glavno" id="k-upisi"' + (upisujeKartica ? ' disabled' : '') + '>'
-        + (upisujeKartica ? '<span class="vrti"></span>Upisujem…' : g.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto') + '</button>';
+      : '<span class="k-stanje">nije stigao</span><span class="k-dugmad">' + (g.mesto && !upisujeKartica ? '<button class="dugme tiho" id="k-promeni">Promeni mesto</button>' : '')
+        + '<button class="dugme glavno" id="k-upisi"' + (upisujeKartica ? ' disabled' : '') + '>'
+        + (upisujeKartica ? '<span class="vrti"></span>Upisujem…' : g.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto') + '</button></span>';
     el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
       + '<div class="k-ime">' + (d && /^\(.*\)$/.test(g.prezime) ? esc(g.ime) : ime(g)) + '</div><div class="k-sta">' + sta + '</div><div class="k-mesto">' + mesto + '</div><div class="k-dno">' + dno + '</div></div>';
   }
   $('sala-kartica').addEventListener('click', async (e) => {
     if (e.target.closest('#zatvori-karticu')) return zatvoriKarticu();
+    if (e.target.closest('#k-promeni') && izabran) {  // štab 16.11.2026: na ovo mesto nova osoba, vlasnik dobija drugo
+      const g = gosti.find((x) => x.broj === izabran);
+      if (!g || !g.mesto || g.stigao) return;
+      promenaZa = g.broj; izabranoMesto = kljucMesta(g.deo, g.redSale, g.mesto); izabran = null;
+      return crtajSalu();
+    }
     if (e.target.closest('#k-dodaj-ovde') && izabranoMesto) return otvoriOsobu(null, izabranoMesto.split('|'));
     if (e.target.closest('#k-trazi-ovde') && izabranoMesto) return otvoriPretragu(izabranoMesto.split('|'));
     if (e.target.closest('#k-obrisi') && izabran && !uToku.has(izabran)) return pitajBrisanje(izabran);
@@ -1688,16 +1704,17 @@
       : r.o.status === 'nije' ? 'Dolazak je već bio obrisan' : 'Nema gosta ' + broj);
   }
   // Osoba sa spiska bez mesta na izabrano slobodno mesto (pretraga iz kartice slobodnog mesta)
+  const pomerenTekst = (p) => { const g = gosti.find((x) => x.broj === p.broj); return g ? '. ' + g.ime + ' ' + g.prezime + ' → ' + p.deo + ' ' + p.red + '/' + p.mesto : ''; };
   async function smestiNaMesto(broj, m) {
     zatvoriPretragu();
     const g = gosti.find((x) => x.broj === broj);
     if (!g || uToku.has(broj)) return;
-    const kljuc = kljucMesta(m[0], m[1], m[2]);
-    izabranoMesto = null; izabran = broj;  // kartica odmah pokazuje osobu na mestu, sa spinerom
-    const r = await izmena({ broj, tekst: 'Upisujem…', akcija: 'dolazak', podaci: { broj, gosti: [], mesto: m }, uspelo: (o) => o.status === 'ok',
+    const kljuc = kljucMesta(m[0], m[1], m[2]), presnimi = promenaZa;
+    izabranoMesto = null; promenaZa = null; izabran = broj;  // kartica odmah pokazuje osobu na mestu, sa spinerom
+    const r = await izmena({ broj, tekst: 'Upisujem…', akcija: 'dolazak', podaci: { broj, gosti: [], mesto: m, presnimi: !!presnimi }, uspelo: (o) => o.status === 'ok',
       promena: { stigao: 'DA', vreme: sad(), upisao: mejl, deo: m[0], redSale: m[1], mesto: String(m[2]), ulaz: ulazMesta(m) } });
-    if (r.ok) return poruka('Upisan i smešten: ' + g.ime + ' ' + g.prezime);
-    if (izabran === broj && !(r.gost && r.gost.mesto)) { izabran = null; izabranoMesto = kljuc; crtajSalu(); }  // nazad na slobodno mesto
+    if (r.ok) return poruka('Upisan i smešten: ' + g.ime + ' ' + g.prezime + (r.o.pomeren ? pomerenTekst(r.o.pomeren) : ''));
+    if (izabran === broj && !(r.gost && r.gost.mesto)) { izabran = null; izabranoMesto = kljuc; promenaZa = presnimi; crtajSalu(); }  // nazad na izbor
     poruka(r.izuzetak ? porukaIzuzetka(r.izuzetak, 'Nije upisano') : r.o.status === 'zauzeto' ? 'To mesto je u međuvremenu zauzeto'
       : r.o.status === 'ima-mesto' ? 'Ta osoba već ima mesto' : 'Nije upisano: ' + (r.o.poruka || r.o.status));
   }
