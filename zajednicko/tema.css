@@ -1,0 +1,85 @@
+/*
+  Zajednička tema za ulaz/ i citanje/ (štab 16.11.2026: „boje i elemente odvojeno, da oba projekta koriste, bez
+  nekonzistentnosti“). Boje, mere i elementi koji postoje u obe aplikacije su samo ovde; aplikacija ih ne
+  prepisuje, nego ih koristi preko promenljivih. Šta je samo jedne aplikacije (kamera, mapa sale, kartice čitanja)
+  ostaje u njoj, ali i tamo uzima ove promenljive, ne svoje boje i visine.
+  Objavljuje se na GitHub Pages kao zajednicko/tema.css, a stranice ga uzimaju sa ../zajednicko/tema.css.
+  Boje: Sanzo Wada, A Dictionary of Color Combinations (imena uz svaku boju).
+*/
+:root {
+  /* Boje. Ispuna (pozadina dugmeta, ekrana, tačke) i tekst nisu ista promenljiva: u tamnoj temi crvena ispuna
+     sa belim slovima je tamna, a crveni tekst na tamnoj površini mora biti svetao. */
+  --pozadina: #f8b6ba;   /* Corinthian Pink */
+  --povrs: #ffffff;      /* White */
+  --povrs2: #e0b3b6;     /* Cameo Pink */
+  --tekst: #7d133a;      /* Pansy Purple */
+  --tekst2: #713b4c;     /* Violet Carmine */
+  --linija: #e0b3b6;     /* Cameo Pink */
+  --akcent: #a62c37;     /* Carmine Red */
+  --na-akcentu: #ffffff;
+  --ok: #1a7444;         /* Diamine Green – ispuna */
+  --lose: #a62c37;       /* Carmine Red – ispuna */
+  --upozorenje: #ae5224; /* Burnt Sienna – ispuna */
+  --ok-tekst: #1a7444;
+  --lose-tekst: #a62c37;
+  --upozorenje-tekst: #ae5224;
+  --na-boji: #ffffff;    /* tekst na --ok, --lose, --upozorenje */
+  --kamera: #7d133a;     /* Pansy Purple */
+  --na-kameri: #f5ecc2;  /* Sulpher Yellow */
+  --prsten: rgba(166, 44, 55, .22);  /* prsten fokusa oko polja */
+  --senka: 0 2px 6px rgba(125, 19, 58, .14);
+
+  /* Mere ekrana (štab 16.11.2026: prelaz između ekrana bez skakanja). Svaki ekran ima isti raspored:
+       ivica ekrana --ivica levo i desno, vrh --razmak (plus safe area),
+       1. red zaglavlja, visok --vis-vrha: mejl i Odjavi se, naslov ekrana i ✕, lupa (okrugla dugmad i pilule te visine),
+       --razmak,
+       2. red, visok --vis-polja: Mesta + Sala na glavnom ekranu ulaza, polje pretrage, ime na Dodaj osobu,
+       pa sadržaj. Polja za unos i obična dugmad su --vis-polja, glavno dugme na dnu --vis-glavnog.
+     Novi element uzima ove promenljive, ne svoju visinu, pa se ekrani poklapaju sami. */
+  --ivica: 16px; --razmak: 14px;
+  --vis-vrha: 44px; --vis-polja: 56px; --vis-glavnog: 62px;
+  --radijus-polja: 14px; --radijus-dugmeta: 16px; --radijus-kartice: 16px;
+  --font-polja: 18px; --naslov-ekrana: 22px;
+
+  --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
+  --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
+  --naslovni: "Space Grotesk", system-ui, sans-serif;
+  --telo: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --pozadina: #7d133a; /* Pansy Purple */
+    --povrs: #a72144;    /* Red */
+    --povrs2: #501345;   /* Cotinga Purple */
+    --tekst: #f5ecc2;    /* Sulpher Yellow */
+    --tekst2: #fdd4bd;   /* Seashell Pink */
+    --linija: #501345;   /* Cotinga Purple */
+    --akcent: #f5ecc2;   /* Sulpher Yellow */
+    --na-akcentu: #7d133a;
+    --lose: #cc1236;     /* Carmine */
+    --ok-tekst: #8fd9ad;
+    --lose-tekst: #ffb4a8;
+    --upozorenje-tekst: #ffd0a8;
+    --kamera: #501345;   /* Cotinga Purple */
+    --prsten: rgba(245, 236, 194, .3);
+    --senka: none;
+  }
+}
+
+/* Osnova */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+h1, h2, h3 { font-family: var(--naslovni); }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s, opacity .2s; }
+button:active { transform: scale(.96); filter: brightness(.95); }
+.skriveno { display: none !important; }
+
+/* Red naloga na vrhu glavnog ekrana: mejl i Odjavi se, tekst mejla poravnat sa tekstom dugmeta (isti razmak) */
+.nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; height: var(--vis-vrha); }
+.nalogred .mejl { flex: 1 1 0; min-width: 0; padding: 0 16px; border: 1.5px solid transparent; font-size: 15px; color: var(--tekst2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.odjava { flex: none; height: var(--vis-vrha); padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
+  color: var(--tekst); font-size: 14px; font-weight: 600; }
+/* Okruglo dugme zaglavlja (✕, lupa) */
+.zatvori { flex: none; width: var(--vis-vrha); height: var(--vis-vrha); border-radius: 50%; background: var(--povrs); box-shadow: var(--senka);
+  display: grid; place-items: center; }
+.zatvori svg { width: 22px; height: 22px; }

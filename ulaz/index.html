@@ -26,51 +26,14 @@
   // Sačuvana prijava → odmah ekran za skeniranje, bez treptaja ekrana za prijavu.
   try { const t = JSON.parse(localStorage.getItem('nova-token') || 'null'); if (t && t.token && t.do > Date.now() + 60000) document.documentElement.classList.add('ucitava'); } catch (e) {}
 </script>
+<link rel="stylesheet" href="../zajednicko/tema.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
 <script src="https://accounts.google.com/gsi/client" async></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <style>
-  :root {
-    --pozadina: #f8b6ba;   /* Corinthian Pink */
-    --povrs: #ffffff;      /* White */
-    --povrs2: #e0b3b6;     /* Cameo Pink */
-    --tekst: #7d133a;      /* Pansy Purple */
-    --tekst2: #713b4c;     /* Violet Carmine */
-    --linija: #e0b3b6;     /* Cameo Pink */
-    --akcent: #a62c37;     /* Carmine Red */
-    --na-akcentu: #ffffff;
-    --ok: #1a7444;         /* Diamine Green */
-    --lose: #a62c37;       /* Carmine Red */
-    --upozorenje: #ae5224; /* Burnt Sienna */
-    --kamera: #7d133a;     /* Pansy Purple */
-    --na-kameri: #f5ecc2;  /* Sulpher Yellow */
-    --na-boji: #ffffff;
-    --prsten: rgba(166, 44, 55, .22);
-    --senka: 0 2px 6px rgba(125, 19, 58, .14);
-    --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
-    --opruga: cubic-bezier(.34, 1.56, .64, 1); --glatko: cubic-bezier(.22, 1, .36, 1);
-    --naslovni: "Space Grotesk", system-ui, sans-serif;
-    --telo: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --pozadina: #7d133a; /* Pansy Purple */
-      --povrs: #a72144;    /* Red */
-      --povrs2: #501345;   /* Cotinga Purple */
-      --tekst: #f5ecc2;    /* Sulpher Yellow */
-      --tekst2: #fdd4bd;   /* Seashell Pink */
-      --linija: #501345;   /* Cotinga Purple */
-      --akcent: #f5ecc2;   /* Sulpher Yellow */
-      --na-akcentu: #7d133a;
-      --lose: #cc1236;     /* Carmine */
-      --kamera: #501345;   /* Cotinga Purple */
-      --prsten: rgba(245, 236, 194, .3);
-      --senka: none;
-    }
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Boje, mere i zajednički elementi: ../zajednicko/tema.css (iste za ulaz i čitanje) */
   /* Bez zumiranja: dupli dodir (Dalje više puta) i štipanje ne uvećavaju stranicu, kao u aplikaciji */
   html, body, button, .dugme, label { touch-action: manipulation; }
   html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; inset: 0; width: 100%;
@@ -83,9 +46,8 @@
      sa potvrde dok se još širi. Boja se menja odjednom (Safari je očita jednom), a potvrda se pojavi brzim pretapanjem, da idu zajedno. */
   /* Isto za vrh (notch, Dynamic Island): Safari boji traku po elementu uz vrh, pa tu uvek stoji boja ekrana, i vraća se kad rezultat nestane */
   .vrh-safari { position: fixed; left: 0; right: 0; top: 0; height: max(var(--vrh), 3px); background: var(--traka, var(--pozadina)); z-index: 31; pointer-events: none; }
-  button, label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
-  button:active, label.dugme:active { transform: scale(.96); filter: brightness(.95); }
-  .skriveno { display: none !important; }
+  label.dugme { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), filter .15s; }
+  label.dugme:active { transform: scale(.96); filter: brightness(.95); }
   /* Sačuvana prijava: dok server ne potvrdi, samo „Učitavam…“ (ni uputstvo ni kamera) */
   #ekran-ucitava { display: none; }
   html.ucitava #ekran-prijava, html.ucitava #ekran-rad { display: none !important; }
@@ -94,10 +56,7 @@
   .istice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px;
     background: var(--upozorenje); color: var(--na-boji); font-weight: 700; font-size: 15px; animation: ulaz .3s var(--glatko) both; }
   .istice span { white-space: nowrap; text-decoration: underline; }
-  .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .nalogred .mejl { min-width: 0; padding: 9px 16px; border: 1.5px solid transparent; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
-    color: var(--tekst); font-size: 14px; font-weight: 600; }
+  /* .nalogred, .mejl, .odjava: tema.css */
 
   /* PWA na iPhone-u (iOS 26, WebKit 301108): donji pojas ekrana (100lvh - 100dvh) se ne iscrtava, pa sadržaj ostaje
      u 100dvh, a od donjeg razmaka za crtu početnog ekrana oduzima se taj mrtvi pojas (on je već prekriva). */
@@ -106,8 +65,8 @@
     /* U PWA nema Safari traka, pa ni trake za njihovu boju: rezultat sam pokriva ceo ekran */
     .vrh-safari, .dno-safari { display: none; }
   }
-  .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px calc(var(--dno) + 14px);
-    gap: 14px; width: 100%; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
+  .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding: calc(var(--vrh) + var(--razmak)) var(--ivica) calc(var(--dno) + var(--razmak));
+    gap: var(--razmak); width: 100%; margin: 0 auto; animation: ulaz .45s var(--glatko) both; }
   @keyframes ulaz { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
   /* Krug koji se vrti: „Učitavam…“ posle prijave i dugme „Upisujem…“ */
   .vrti { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; animation: vrti .7s linear infinite; }
@@ -122,7 +81,7 @@
   @keyframes lebdi { 50% { transform: translateY(-4px); } }
   .prijava h2 { margin: 0; font-size: 22px; font-weight: 800; line-height: 1.15; }
   .prijava .podnaslov { font-size: 14px; color: var(--tekst2); margin-top: 2px; }
-  .prijava .poruka { color: var(--lose); font-weight: 700; text-align: center; margin: 0; min-height: 0; }
+  .prijava .poruka { color: var(--lose-tekst); font-weight: 700; text-align: center; margin: 0; min-height: 0; }
   .prijava .poruka:empty { display: none; }
   /* Koraci su kartice u traci preko cele širine ekrana: pomera se cela kartica, a susedna ulazi sa ivice */
   .koraci { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 -16px; overflow: hidden; }
@@ -153,8 +112,6 @@
   html.kratko.vodic-otvoren .vodic.izlazi { animation: dole .25s ease-in both; }
   html.kratko.vodic-otvoren .vodic .vrh-vodica { display: flex; align-items: center; justify-content: space-between; }
   .vrh-vodica h2 { margin: 0; font-size: 22px; font-weight: 800; }
-  .vrh-vodica .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
-  .vrh-vodica .zatvori svg { width: 22px; height: 22px; }
   .navigacija .dugme:disabled { opacity: .4; }
 
   /* Crtež ekrana u uputstvu (izmišljeni nalozi, ne prava slika) */
@@ -200,7 +157,7 @@
   .napredak #od { font-weight: 800; color: var(--tekst); font-variant-numeric: tabular-nums; }
   .napredak .broj b.skok { animation: skok .45s var(--opruga); }
   .napredak .ceka { font-size: 14px; font-weight: 700; color: var(--tekst2); }
-  .napredak .ceka.nema-veze { color: var(--upozorenje); }
+  .napredak .ceka.nema-veze { color: var(--upozorenje-tekst); }
   @keyframes skok { 40% { transform: scale(1.3); color: var(--ok); } }
   .traka { flex: 1; min-width: 60px; height: 10px; align-self: center; background: var(--povrs2); border-radius: 5px; overflow: hidden; }
   .traka i { display: block; height: 100%; width: 0; background: var(--ok); border-radius: 5px; transition: width .6s var(--glatko); }
@@ -248,17 +205,17 @@
   .kamera .rezerva .sporedno { background: none; box-shadow: none; color: var(--na-kameri); text-decoration: underline; min-height: 40px; font-size: 15px; }
 
   .dugmad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .dugme { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 58px; border-radius: 16px;
+  .dugme { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--vis-polja); border-radius: var(--radijus-dugmeta);
     background: var(--povrs); color: var(--tekst); font-size: 17px; font-weight: 700; box-shadow: var(--senka); }
   .dugme svg { width: 22px; height: 22px; }
-  .dugme.glavno { background: var(--akcent); color: var(--na-akcentu); font-size: 19px; min-height: 62px; }
+  .dugme.glavno { background: var(--akcent); color: var(--na-akcentu); font-size: 19px; min-height: var(--vis-glavnog); }
 
   /* Dolazak: osoba, njeni gosti i mesta za sve odjednom */
   .pretraga li.klik { cursor: pointer; }
   .pretraga li.klik:active { background: var(--povrs); }
   .pretraga .znak { font-size: 13px; font-weight: 700; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); color: var(--tekst2); }
   .pretraga .znak.bez { border-color: var(--akcent); color: var(--akcent); }
-  .osoba-telo { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+  .pretraga .osoba-telo { flex: 1; min-height: 0; overflow-y: auto; padding: 5px 5px 12px; margin: -5px -5px 0; width: calc(100% + 10px); }  /* 5px: prsten fokusa (4px) se ne seče */
   .osoba-dno { padding: 10px 0 calc(var(--dno) + 12px); display: grid; gap: 8px; }
   .osoba-dno .dugme:disabled { opacity: .45; }
   .osoba-dno .tekst-dugme { background: none; box-shadow: none; min-height: 40px; font-size: 15px; color: var(--tekst2); text-decoration: underline; }
@@ -269,9 +226,9 @@
   .osoba .stanje.bez { border: 2px dashed var(--linija); background: none; }
   .osoba h3 { margin: 22px 0 8px; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; color: var(--tekst2); }
   .osoba .red-gosta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; animation: pojava .18s ease-out both; }
-  .osoba .red-gosta button { flex: none; width: 48px; height: 48px; border-radius: 12px; background: var(--povrs); display: grid; place-items: center; color: var(--tekst2); }
+  .osoba .red-gosta button { flex: none; width: var(--vis-polja); height: var(--vis-polja); border-radius: var(--radijus-polja); background: var(--povrs); display: grid; place-items: center; color: var(--tekst2); }
   .osoba .red-gosta button svg { width: 20px; height: 20px; }
-  .osoba .dodaj-gosta { display: flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 16px; border-radius: 14px; border: 2px dashed var(--tekst2); background: var(--povrs2); color: var(--tekst); font-weight: 700; font-size: 16px; width: 100%; justify-content: center; }
+  .osoba .dodaj-gosta { display: flex; align-items: center; gap: 8px; min-height: var(--vis-polja); padding: 0 16px; border-radius: var(--radijus-polja); border: 2px dashed var(--tekst2); background: var(--povrs2); color: var(--tekst); font-weight: 700; font-size: 16px; width: 100%; justify-content: center; }
   .osoba .dodaj-gosta svg { width: 20px; height: 20px; }
   .osoba .uputstvo { font-size: 13px; color: var(--tekst2); margin: 4px 2px 0; }
   .osoba .greska-poruka { margin-top: 14px; padding: 12px 14px; border-radius: 14px; background: var(--lose); color: #fff; font-weight: 700; animation: pojava .18s ease-out both; }
@@ -328,7 +285,7 @@
 
   /* Pretraga preko celog ekrana, prati tastaturu */
   .pretraga { position: fixed; left: 0; right: 0; top: 0; z-index: 24; height: 100dvh; background: var(--pozadina);
-    display: flex; flex-direction: column; padding: calc(var(--vrh) + 14px) 16px 10px; animation: gore .35s var(--glatko) both; }
+    display: flex; flex-direction: column; padding: calc(var(--vrh) + var(--razmak)) var(--ivica) 10px; animation: gore .35s var(--glatko) both; }
   .pretraga.izlazi { animation: bledi .2s ease-out both; pointer-events: none; }
   @keyframes bledi { to { opacity: 0; } }
   .pretraga::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 100vh; background: var(--pozadina); }
@@ -336,13 +293,11 @@
   @keyframes gore { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes dole { to { transform: translateY(40px); opacity: 0; } }
   .pretraga > * { width: 100%; margin-left: auto; margin-right: auto; }
-  .pretraga .vrh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .pretraga .vrh h2 { margin: 0; font-size: 22px; font-weight: 800; }
-  .pretraga .zatvori { width: 44px; height: 44px; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
-  .pretraga .zatvori svg { width: 22px; height: 22px; }
+  .pretraga .vrh { display: flex; align-items: center; justify-content: space-between; height: var(--vis-vrha); margin-bottom: var(--razmak); }
+  .pretraga .vrh h2 { margin: 0; font-size: var(--naslov-ekrana); font-weight: 800; }
   .pretraga .polje { position: relative; }
   .pretraga .polje svg { position: absolute; left: 16px; top: 50%; width: 22px; height: 22px; transform: translateY(-50%); color: var(--tekst2); pointer-events: none; }
-  .pretraga input { width: 100%; font-size: 18px; padding: 15px 16px 15px 50px; border-radius: 14px; -webkit-appearance: none; appearance: none; border: 2px solid var(--linija);
+  .pretraga input { width: 100%; height: var(--vis-polja); font-size: var(--font-polja); padding: 0 16px 0 50px; border-radius: var(--radijus-polja); -webkit-appearance: none; appearance: none; border: 2px solid var(--linija);
     background: var(--povrs); color: var(--tekst); outline: none; transition: border-color .2s, box-shadow .2s; }
   .pretraga input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px var(--prsten); }
   .pretraga input::placeholder { color: var(--tekst2); }
@@ -380,23 +335,23 @@
   .prozor-kartica.lose .prozor-ikona { background: var(--lose); color: #fff; animation: iskoci .45s var(--opruga) both; }
 
 
-  /* Gore: Stiglo X od Y je dugme koje otvara salu */
-  button.napredak { width: 100%; justify-content: space-between; padding: 12px 14px; border-radius: 16px; background: var(--povrs); box-shadow: var(--senka); text-align: left; }
-  .napredak .broj { font-size: 20px; }  /* štab 16.11.2026: „Stiglo 0/364“, sve iste veličine */
-  .sala-dugme { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--akcent); font-size: 16px; }
-  .sala-dugme svg { width: 22px; height: 22px; }
+  /* Gore (štab 16.11.2026): [Mesta      0/364][Sala] na mestu i u veličini polja pretrage, oba otvaraju salu */
+  .napredak-red { display: flex; gap: 10px; }
+  button.napredak { flex: 1; min-width: 0; height: var(--vis-polja); justify-content: space-between; padding: 0 16px; border-radius: var(--radijus-polja);
+    border: 2px solid var(--linija); background: var(--povrs); text-align: left; }
+  .napredak .broj { font-size: var(--font-polja); }
+  .napredak .oznaka-broja { font-size: var(--font-polja); color: var(--tekst2); }
+  .napredak-red .sala-dugme { flex: none; padding: 0 20px; color: var(--akcent); }
 
   /* Sala preko celog ekrana: mapa (zum i pomeranje prstima) i spiskovi */
   .sala { position: fixed; inset: 0; z-index: 22; background: var(--pozadina); display: flex; flex-direction: column; gap: 10px;
-    padding: calc(var(--vrh) + 12px) 12px calc(var(--dno) + 10px); animation: gore .35s var(--glatko) both; }
+    padding: calc(var(--vrh) + var(--razmak)) var(--ivica) calc(var(--dno) + 10px); animation: gore .35s var(--glatko) both; }
   .sala.izlazi { animation: bledi .2s ease-out both; pointer-events: none; }
   html.sala-otvorena #ekran-rad { visibility: hidden; }
   .sala > * { width: 100%; margin-left: auto; margin-right: auto; }
-  .sala-vrh { display: flex; align-items: center; gap: 12px; }
-  .sala-vrh h2 { margin: 0; font-size: 22px; font-weight: 800; }
+  .sala-vrh { display: flex; align-items: center; gap: 12px; height: var(--vis-vrha); }
+  .sala-vrh h2 { margin: 0; font-size: var(--naslov-ekrana); font-weight: 800; line-height: 1.1; }
   .sala-vrh .osvezeno { font-size: 13px; color: var(--tekst2); }
-  .sala-vrh .zatvori { width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--povrs); box-shadow: var(--senka); display: grid; place-items: center; }
-  .sala-vrh .zatvori svg { width: 22px; height: 22px; }
   .sala-vrh .naslov-sale { flex: 1; min-width: 0; }
   .sala-broj { text-align: right; line-height: 1.1; font-size: 12px; color: var(--tekst2); }
   .sala-broj b { display: block; font: 800 22px var(--naslovni); color: var(--tekst); white-space: nowrap; }
@@ -444,9 +399,10 @@
   .k-stanje { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; }
   .k-stanje::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--povrs2); }
   .k-stanje.ok::before { background: var(--ok); }
+  .k-stanje.slobodno::before { background: none; box-shadow: inset 0 0 0 2px var(--tekst2); opacity: .7; }
   .k-dno .dugme { min-height: 48px; padding: 0 18px; flex: none; }
   /* Brisanje dolaska: crveno samo u prozoru, u kartici tiho (ne poziva na dodir) */
-  .k-dno .dugme.brisi { min-height: 40px; padding: 0 14px; font-size: 14px; background: none; box-shadow: none; color: var(--lose); border: 1.5px solid var(--linija); }
+  .k-dno .dugme.brisi { min-height: 40px; padding: 0 14px; font-size: 14px; background: none; box-shadow: none; color: var(--lose-tekst); border: 1.5px solid var(--linija); }
   .prozor-dugmad .dugme.brisi { background: var(--lose); color: #fff; }
   .prozor-dugmad .dugme:disabled { opacity: .35; }
   .prozor-tekst .brisi-broj { display: block; margin: 12px 0 8px; font-size: 18px; color: var(--tekst); }
@@ -558,10 +514,13 @@
 
 <div class="ekran skriveno" id="ekran-rad">
   <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
-  <button class="napredak" id="otvori-salu" aria-label="Sala: ko je stigao i ko gde sedi">
-    <div class="broj">Stiglo <b id="stiglo">…</b><span id="od">/…</span> <span class="ceka skriveno" id="ceka"></span></div>
-    <span class="sala-dugme"><svg><use href="#i-sala"/></svg>Sala<svg><use href="#i-desno"/></svg></span>
-  </button>
+  <div class="napredak-red">
+    <button class="napredak" id="mesta-broj" aria-label="Mesta: koliko je stiglo, otvara salu">
+      <span class="oznaka-broja">Mesta</span><span class="ceka skriveno" id="ceka"></span>
+      <span class="broj"><b id="stiglo">…</b><span id="od">/…</span></span>
+    </button>
+    <button class="dugme sala-dugme" id="otvori-salu" aria-label="Sala: ko je stigao i ko gde sedi"><svg><use href="#i-sala"/></svg>Sala</button>
+  </div>
   <button class="istice skriveno" id="istice">Prijava ističe uskoro <span>Produžite</span></button>
   <div class="kamera" id="kamera">
     <video id="video" playsinline muted></video>
@@ -610,7 +569,7 @@
   <div class="sala-vrh">
     <button class="zatvori" id="zatvori-salu" aria-label="Nazad"><svg><use href="#i-zatvori"/></svg></button>
     <div class="naslov-sale"><h2>Sala</h2><div class="osvezeno" id="sala-osvezeno"></div></div>
-    <div class="sala-broj" id="sala-broj"><b>…</b>stiglo</div>
+    <div class="sala-broj" id="sala-broj"><b>…</b>mesta</div>
     <button class="zatvori" id="sala-trazi" aria-label="Pretraži goste"><svg><use href="#i-trazi"/></svg></button>
   </div>
   <div class="mapa" id="mapa">
@@ -1163,9 +1122,9 @@
     return [d ? 'gost · dolazi sa: ' + d.ime + ' ' + d.prezime : (g.grupa || g.uloga), 'broj ' + g.broj, uz ? '+' + brojGostiju(uz) : ''].filter(Boolean).join(' · ');
   }
   let osoba = null;  // {g | null (nova), novo, gosti: [], radi, greska, rezultat}
-  function otvoriOsobu(g) {
+  function otvoriOsobu(g, mesto) {  // mesto: [deo, red, broj] izabrano u sali (samo za novu osobu)
     zatvoriPretragu();
-    osoba = { g: g || null, novo: '', gosti: [], radi: false, greska: '', rezultat: null };
+    osoba = { g: g || null, mesto: g ? null : mesto || null, novo: '', gosti: [], radi: false, greska: '', rezultat: null };
     const el = $('osoba');
     el.classList.remove('skriveno', 'izlazi');
     document.documentElement.classList.add('trazi');
@@ -1199,7 +1158,9 @@
         : '<div class="stanje bez">Nema mesto. Dobiće ga sada' + (g.grupa ? ', uz grupu ' + esc(g.grupa) : '') + '.</div>';
     } else {
       html += '<div class="polje"><svg><use href="#i-nova-osoba"/></svg><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
-        + '<p class="uputstvo">Osoba koje nema na spisku. Dobiće mesto sa svojim gostima.</p>';
+        + (osoba.mesto ? '<div class="stanje">' + esc(osoba.mesto[0]) + ' · red <b>' + esc(osoba.mesto[1]) + '</b> · mesto <b>' + esc(osoba.mesto[2]) + '</b><br>'
+            + ulazOpis(ulazMesta(osoba.mesto)) + '</div><p class="uputstvo">Osoba koje nema na spisku sedeće na ovo mesto, a njeni gosti do nje.</p>'
+          : '<p class="uputstvo">Osoba koje nema na spisku. Dobiće mesto sa svojim gostima.</p>');
     }
     html += '<h3>Gosti</h3>' + osoba.gosti.map((x, i) => '<div class="red-gosta"><div class="polje" style="flex:1"><svg><use href="#i-korisnik"/></svg><input data-gost="' + i
       + '" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Ime i prezime" aria-label="Gost ' + (i + 1) + '" value="' + esc(x) + '"></div>'
@@ -1257,6 +1218,7 @@
     $('osoba').querySelectorAll('input, .osoba-telo button').forEach((x) => (x.disabled = true));
     const zahtev = { gosti: osoba.gosti.map((x) => x.trim()) };
     if (osoba.g) zahtev.broj = osoba.g.broj; else zahtev.novo = osoba.novo.trim();
+    if (osoba.mesto) zahtev.mesto = osoba.mesto;
     let o;
     try { o = await server('dolazak', zahtev); }
     catch (e) {
@@ -1270,7 +1232,8 @@
     if (o.values) primi(o.values);
     if (o.sala) primiSalu(o);
     if (o.status !== 'ok') {
-      osoba.greska = o.status === 'nema-mesta' ? 'Nema ' + o.treba + ' slobodnih mesta (slobodno je ' + o.slobodno + '). Smanjite broj gostiju ili javite štabu.'
+      osoba.greska = o.status === 'zauzeto' ? 'To mesto je u međuvremenu zauzeto. Zatvorite i izaberite drugo mesto u sali.'
+        : o.status === 'nema-mesta' ? 'Nema ' + o.treba + ' slobodnih mesta (slobodno je ' + o.slobodno + '). Smanjite broj gostiju ili javite štabu.'
         : o.status === 'vec' ? 'Već je ušao.' : esc(o.poruka || 'Nije upisano.');
       if (osoba.g) osoba.g = gosti.find((x) => x.broj === osoba.g.broj) || osoba.g;
       ton(false); return crtajOsobu();
@@ -1278,6 +1241,7 @@
     const nadji = (x) => gosti.find((y) => y.broj === x.broj);
     const lj = [nadji(o.osoba)].concat(o.gosti.map(nadji)).filter(Boolean);
     zatvoriOsobu();
+    if (osoba && osoba.mesto && lj[0] && !$('sala').classList.contains('skriveno')) { izabranoMesto = null; izabran = lj[0].broj; crtajSalu(); }
     prikazi({ status: 'ok', gost: lj[0], ljudi: lj, novo: true });  // isti ekran kao posle skeniranja, ostaje do dodira
   }
   // Mesta po redovima: red i ulaz jednom, mapica reda (ulaz 1 levo) sa njihovim mestima, pa ko sedi na kom mestu.
@@ -1315,8 +1279,11 @@
   // ekrana) ili dodirom na mesto: mapa se uveća na njen red, a ispod je kartica, ista svuda, sa „Upiši dolazak“.
   let sala = [], rezervisano = new Set(), verzija = 0, osvezenoU = 0;
   let izabran = null;  // broj izabrane osobe
+  let izabranoMesto = null;  // ključ izabranog slobodnog mesta (kartica „Slobodno mesto“)
   const kljucMesta = (deo, red, m) => deo + '|' + red + '|' + Number(m);
   const opisMesta = (m) => { const [d, r, n] = m.split('|'); return d + ' ' + r + '/' + n; };
+  // ulaz kao na serveru: leva polovina reda je ulaz 1
+  const ulazMesta = ([deo, red, m]) => { const r = sala.find((x) => x.deo === deo && x.red === red); return String(r && Number(m) > Math.floor((r.mesta + 1) / 2) ? 2 : 1); };
   function primiSalu(o) {
     if (o.sala) sala = o.sala.map((r) => ({ deo: r[0], red: r[1], mesta: Number(r[2]) }));
     if (o.rezervisano) rezervisano = new Set(o.rezervisano.map((r) => kljucMesta(r[0], r[1], r[2])));
@@ -1368,7 +1335,8 @@
         if (deo === 'Parter' && i === 5) y += 22;   // prolaz između V i VI reda
         redoviY[deo + '|' + r.red] = y;
         const x1 = W / 2 - (r.mesta - 1) * K / 2;
-        const izabranRed = ja && ja.mesto && ja.deo === deo && ja.redSale === r.red;
+        const izm = !ja && izabranoMesto ? izabranoMesto.split('|') : null;
+        const izabranRed = (ja && ja.mesto && ja.deo === deo && ja.redSale === r.red) || (izm && izm[0] === deo && izm[1] === r.red);
         t(x1 - 30, y + 7, r.red, 'oznaka' + (izabranRed ? ' oznaka-izabrana' : ''), 'end');
         // štab 16.11.2026: red izabrane osobe je uokviren svetlom trakom (sa oznakom reda), a njeno sedište potamni
         if (izabranRed) {
@@ -1378,6 +1346,10 @@
         for (let m = 1; m <= r.mesta; m++) {
           const km = kljucMesta(deo, r.red, m), x = x1 + (m - 1) * K, gost = naMestu[km];
           el.push('<circle data-m="' + km + '" cx="' + x + '" cy="' + y + '" r="' + R + '" class="m-' + stanjeMesta(km, naMestu) + '"/>');
+          if (izm && izabranRed && Number(izm[2]) === m) {  // izabrano slobodno mesto: isto kao sedište izabrane osobe
+            prstenovi.push('<circle cx="' + x + '" cy="' + y + '" r="' + (R + 2) + '" class="sediste-izabrano"/>');
+            prstenovi.push('<text x="' + x + '" y="' + (y + 5) + '" text-anchor="middle" class="br-mesta na-akcentu">' + m + '</text>');
+          }
           if (gost && grupa.svi.has(gost.broj)) {  // izabrana osoba: tamno sedište; njeni: isprekidan prsten; svima broj mesta
             const ona = gost.broj === izabran;
             prstenovi.push(ona ? '<circle cx="' + x + '" cy="' + y + '" r="' + (R + 2) + '" class="sediste-izabrano"/>'
@@ -1403,7 +1375,7 @@
     if (!geometrija || geometrija.H !== H) { geometrija = { H, redoviY }; $('mapa-svg').setAttribute('viewBox', '0 0 ' + W + ' ' + H); $('mapa-svg').setAttribute('preserveAspectRatio', 'xMidYMin meet'); }
     geometrija.redoviY = redoviY;
     primeniPogled();
-    $('sala-broj').innerHTML = '<b>' + gosti.filter((x) => x.stigao).length + ' / ' + gosti.filter((x) => x.potvrdio || x.mesto).length + '</b>stiglo';
+    $('sala-broj').innerHTML = '<b>' + gosti.filter((x) => x.stigao).length + ' / ' + gosti.filter((x) => x.potvrdio || x.mesto).length + '</b>mesta';
     crtajKarticu();
   }
   const LEGENDA = [['stigao', 'stigao'], ['ceka', 'rezervisano'], ['slobodno', 'slobodno']];
@@ -1477,9 +1449,9 @@
   mapa.addEventListener('pointerup', pusten);
   mapa.addEventListener('pointercancel', pusten);
   // Miš i trackpad kao Google mape (štab 16.11.2026): zum je ⌘/Ctrl + skrol ili štipanje na trackpadu (stiže kao skrol sa Ctrl);
-  // običan skrol ne radi ništa na mapi, samo kratko pokaže savet. Prsti na ekranu idu preko pointer događaja iznad.
+  // dva prsta levo-desno pomeraju mapu, a skrol gore-dole ne radi ništa, samo kratko pokaže savet. Prsti na ekranu idu preko pointer događaja iznad.
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-  $('mapa-savet').textContent = 'Za zum držite ' + (mac ? '⌘' : 'Ctrl') + ' i skrolujte, ili raširite dva prsta na trackpadu';
+  $('mapa-savet').textContent = 'Za uvećavanje držite taster ' + (mac ? '⌘' : 'Ctrl');
   let savetDo = 0;
   mapa.addEventListener('wheel', (e) => {
     if (e.ctrlKey || e.metaKey) {
@@ -1489,7 +1461,12 @@
       $('mapa-savet').classList.remove('vidi');
       return;
     }
-    if (Math.abs(e.deltaY) + Math.abs(e.deltaX) < 4) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
+      e.preventDefault();
+      pogled.x -= e.deltaX * (e.deltaMode === 1 ? 20 : 1) * jedinica(); primeniPogled();
+      return;
+    }
+    if (Math.abs(e.deltaY) < 4) return;
     $('mapa-savet').classList.add('vidi');
     clearTimeout(savetDo); savetDo = setTimeout(() => $('mapa-savet').classList.remove('vidi'), 1200);
   }, { passive: false });
@@ -1519,7 +1496,18 @@
   function dodirMesta(m) {
     const g = gostNaMestu()[m];
     if (g) return izaberi(g, false);
-    poruka((rezervisano.has(m) ? 'Rezervisano: ' : 'Slobodno: ') + opisMesta(m));
+    if (rezervisano.has(m)) return poruka('Rezervisano: ' + opisMesta(m));
+    izaberiMesto(m);
+  }
+  // Slobodno mesto (štab 16.11.2026): kartica „Slobodno mesto“ sa dugmetom „Dodaj osobu ovde“
+  function izaberiMesto(m) {
+    const otvorena = !$('sala-kartica').classList.contains('skriveno');
+    if (!otvorena) pogledPre = { s: pogled.s, x: pogled.x, y: pogled.y };
+    izabran = null; izabranoMesto = m;
+    $('sala-kartica').classList.remove('skriveno');
+    $('sala').classList.add('ima-karticu');
+    crtajSalu();
+    if (!otvorena) { const [d, r, n] = m.split('|'); requestAnimationFrame(() => pokaziRed(d, r, n)); }
   }
   // Otvaranje kartice uvek pokaže red osobe; sa otvorenom karticom dodir na drugo mesto samo menja karticu (mapa stoji),
   // a pretraga pokaže red nove osobe. ✕ vraća mapu kakva je bila pre kartice.
@@ -1527,14 +1515,14 @@
   function izaberi(g, zum) {
     const otvorena = !$('sala-kartica').classList.contains('skriveno');
     if (!otvorena) pogledPre = { s: pogled.s, x: pogled.x, y: pogled.y };
-    izabran = g.broj;
+    izabran = g.broj; izabranoMesto = null;
     $('sala-kartica').classList.remove('skriveno');
     $('sala').classList.add('ima-karticu');
     crtajSalu();
     if ((!otvorena || zum) && g.mesto) requestAnimationFrame(() => pokaziRed(g.deo, g.redSale, g.mesto));
   }
   function zatvoriKarticu() {
-    izabran = null;
+    izabran = null; izabranoMesto = null;
     $('sala-kartica').classList.add('skriveno');
     $('sala').classList.remove('ima-karticu');
     Object.assign(pogled, pogledPre || { s: 1, x: 0, y: 0 });
@@ -1553,7 +1541,20 @@
   // Kartica: samo ono što treba na ulazu – ko je (grupa razlikuje isto ime), sa kim je, gde sedi i na koji ulaz, da li je ušao
   let upisujeKartica = false, brise = false;
   function crtajKarticu() {
-    const el = $('sala-kartica'), g = izabran && gosti.find((x) => x.broj === izabran);
+    const el = $('sala-kartica');
+    if (izabranoMesto) {
+      const naMestu = gostNaMestu(), zauzeo = naMestu[izabranoMesto];
+      if (zauzeo) { izabranoMesto = null; izabran = zauzeo.broj; return crtajSalu(); }  // mesto je u međuvremenu dobio neko: kartica te osobe
+      const [d, r, n] = izabranoMesto.split('|'), sused = (x) => naMestu[kljucMesta(d, r, x)];
+      const levo = sused(Number(n) - 1), desno = sused(Number(n) + 1);
+      const pored = [levo && 'levo: ' + ime(levo), desno && 'desno: ' + ime(desno)].filter(Boolean).join(' · ');
+      el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
+        + '<div class="k-ime">Slobodno mesto</div><div class="k-sta">' + (pored || 'pored su slobodna mesta') + '</div>'
+        + '<div class="k-mesto">' + esc(d) + ' · red <b>' + esc(r) + '</b> · mesto <b>' + esc(n) + '</b><br>' + ulazOpis(ulazMesta([d, r, n])) + '</div>'
+        + '<div class="k-dno"><span class="k-stanje slobodno">slobodno</span><button class="dugme glavno" id="k-dodaj-ovde"><svg><use href="#i-nova-osoba"/></svg>Dodaj osobu ovde</button></div></div>';
+      return;
+    }
+    const g = izabran && gosti.find((x) => x.broj === izabran);
     if (!g) { el.classList.add('skriveno'); return; }
     const d = g.gostOd && gosti.find((x) => x.broj === g.gostOd);
     const uz = gosti.filter((x) => x.gostOd === g.broj).length;
@@ -1568,6 +1569,7 @@
   }
   $('sala-kartica').addEventListener('click', async (e) => {
     if (e.target.closest('#zatvori-karticu')) return zatvoriKarticu();
+    if (e.target.closest('#k-dodaj-ovde') && izabranoMesto) { const [d, r, n] = izabranoMesto.split('|'); return otvoriOsobu(null, [d, r, n]); }
     if (e.target.closest('#k-obrisi') && !brise && izabran) return pitajBrisanje(izabran);
     if (!e.target.closest('#k-upisi') || upisujeKartica || !izabran) return;
     // štab 15.11.2026: svaka izmena traži potvrdu
@@ -1663,13 +1665,14 @@
   }, 1000);
   function zatvoriSalu() {
     clearInterval(tajmerSale);
-    izabran = null;
+    izabran = null; izabranoMesto = null;
     const el = $('sala');
     el.classList.add('izlazi');
     document.documentElement.classList.remove('sala-otvorena');
     setTimeout(() => { el.classList.add('skriveno'); el.classList.remove('izlazi'); }, 200);
   }
   $('otvori-salu').addEventListener('click', () => otvoriSalu());
+  $('mesta-broj').addEventListener('click', () => otvoriSalu());
   $('zatvori-salu').addEventListener('click', zatvoriSalu);
   $('sala-trazi').addEventListener('click', otvoriPretragu);
 

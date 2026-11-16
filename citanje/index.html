@@ -17,57 +17,34 @@
   Animacija prati radnju (napred, nazad); izmena sa drugog telefona se samo pretopi.
   Izvor: scripts/zahvalnice/citanje/ u privatnom repozitorijumu.
 -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Čitanje">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="ikona-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="../zajednicko/tema.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap">
 <script src="https://accounts.google.com/gsi/client" async></script>
 <style>
-  :root {
-    --pozadina: #f8b6ba;   /* Corinthian Pink */
-    --povrs: #ffffff;
-    --tekst: #7d133a;      /* Pansy Purple */
-    --tekst2: #713b4c;     /* Violet Carmine */
-    --linija: #e0b3b6;     /* Cameo Pink */
-    --akcent: #a62c37;     /* Carmine Red */
-    --na-akcentu: #ffffff;
-    --ok: #1a7444;         /* Diamine Green */
-    --lose: #a62c37;
-    --upozorenje: #ae5224; /* Burnt Sienna */
-    --senka: 0 2px 6px rgba(125, 19, 58, .14);
-    --dno: env(safe-area-inset-bottom, 0px); --vrh: env(safe-area-inset-top, 0px);
-    --glatko: cubic-bezier(.22, 1, .36, 1);
-    --naslovni: "Space Grotesk", system-ui, sans-serif;
-    --telo: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root { --pozadina: #7d133a; --povrs: #a72144; --tekst: #f5ecc2; --tekst2: #fdd4bd; --linija: #501345;
-      --akcent: #f5ecc2; --na-akcentu: #7d133a; --ok: #2f9e60; --lose: #ffb4a8; --senka: none; }
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  /* Boje, mere i zajednički elementi: ../zajednicko/tema.css (iste za ulaz i čitanje) */
   html, body, button, label { touch-action: manipulation; }
   html, body { margin: 0; height: 100%; background: var(--pozadina); color: var(--tekst); font-family: var(--telo); font-size: 17px; }
-  h1, h2 { font-family: var(--naslovni); }
-  button { font: inherit; color: inherit; border: 0; cursor: pointer; transition: transform .15s var(--glatko), opacity .2s; }
-  button:active { transform: scale(.96); }
-  .skriveno { display: none !important; }
   .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; gap: 10px; width: 100%;
-    margin: 0 auto; padding: calc(var(--vrh) + 10px) 16px calc(var(--dno) + 12px); }
+    margin: 0 auto; padding: calc(var(--vrh) + var(--razmak)) var(--ivica) calc(var(--dno) + 12px); }
 
   /* Vrh je jedan red: nalog, šta se upravo dešava, zakasneli, odjava (štab 16.11.2026: broj izlazaka je u zaglavlju
      kartica, poseban red je trošio visinu). Status sme u dva reda i potiskuje mejl, da ništa ne skače. */
   #status { flex: 0 1 auto; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; text-align: right; color: var(--tekst2); margin-left: auto; }
   #status:empty { display: none; }
   #zakasnelih { flex: none; font-size: 14px; font-weight: 700; color: var(--tekst); padding: 6px 10px; border-radius: 999px; background: var(--povrs); }
-  #status.lose { color: var(--lose); font-weight: 700; }
-  #status.pazi { color: var(--upozorenje); font-weight: 700; }
-  @media (prefers-color-scheme: dark) { #status.pazi { color: #ffd0a8; } }
+  #status.lose { color: var(--lose-tekst); font-weight: 700; }
+  #status.pazi { color: var(--upozorenje-tekst); font-weight: 700; }
   .vrti { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: vrti .7s linear infinite; }
   @keyframes vrti { to { transform: rotate(360deg); } }
-  /* Nalog i odjava: isto kao u skeneru (ulaz/index.html, .nalogred) */
-  .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
-  .nalogred .mejl { flex: 1 1 0; min-width: 0; padding: 9px 16px; border: 1.5px solid transparent; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
-    color: var(--tekst); font-size: 14px; font-weight: 600; }
+  /* .nalogred, .mejl, .odjava: tema.css */
 
   .kartica { background: var(--povrs); border-radius: 18px; box-shadow: var(--senka); padding: 14px 16px; display: flex; flex-direction: column;
     min-height: 0; min-width: 0; overflow: hidden; }
@@ -136,7 +113,7 @@
   .prijava h1 { margin: 0; font-size: 28px; }
   .prijava p { margin: 0; color: var(--tekst2); line-height: 1.45; max-width: 34ch; }
   .prijava .dugme { flex: none; padding: 14px 28px; font-size: 18px; }
-  .prijava .poruka { font-size: 15px; color: var(--lose); min-height: 20px; }
+  .prijava .poruka { font-size: 15px; color: var(--lose-tekst); min-height: 20px; }
   .ucitava { display: flex; align-items: center; gap: 10px; color: var(--tekst2); font-weight: 700; font-size: 17px; }
   .ucitava .vrti { width: 20px; height: 20px; border-width: 2.5px; }
   .prozor { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 10; animation: pojava .15s both; }
