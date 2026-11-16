@@ -425,6 +425,12 @@
   /* Mesto gosta na zelenom ekranu posle skeniranja */
   .rezultat .mesto-gosta { margin-top: 6px; padding: 12px 18px; border-radius: 16px; background: rgba(255,255,255,.18); font-size: 20px; font-weight: 700; line-height: 1.35; animation: ulaz .4s var(--glatko) .3s both; }
   .rezultat .mesto-gosta b { font-family: var(--naslovni); font-size: 28px; }
+  /* Presnimljeno mesto (štab 16.11.2026): upadljivo, crno na žutom, svuda gde se mesto vidi */
+  .presnimljeno { margin-top: 10px; padding: 12px 14px; border-radius: 14px; background: #f5ecc2; color: #3a0a1c; font-size: 17px; line-height: 1.4;
+    font-weight: 600; text-align: left; border: 3px solid #3a0a1c; }
+  .presnimljeno b { display: block; font: 800 20px var(--naslovni); letter-spacing: .04em; margin-bottom: 2px; }
+  .rezultat .presnimljeno { width: 100%; max-width: 420px; font-size: 19px; animation: ulaz .4s var(--glatko) .25s both; }
+  .pretraga .znak.presnimljen { border-color: var(--upozorenje); color: var(--upozorenje-tekst); }
 
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
@@ -897,12 +903,13 @@
       klasa = 'ok';
       const lj = r.ljudi || saGostima(r.gost);
       const naslov = !r.novo ? 'UPISAN' : lj.length > 1 ? 'MESTA DODELJENA' : 'MESTO DODELJENO';
-      html = ikona('i-ok') + '<div class="naslov">' + naslov + '</div><div class="ime">' + ime(r.gost) + '</div>'
-        + '<div class="detalj">' + esc(opisGosta(r.gost)) + '</div>'
+      if (saPozivnice(r.gost)) klasa = 'upozorenje';  // presnimljeno mesto: narandžasto, da vratar vidi da nije obično
+      html = ikona(klasa === 'ok' ? 'i-ok' : 'i-pazi') + '<div class="naslov">' + naslov + '</div><div class="ime">' + ime(r.gost) + '</div>'
+        + '<div class="detalj">' + esc(opisGosta(r.gost)) + '</div>' + upozorenjeMesta(r.gost)
         + (r.gost.mesto ? blokMesta(lj) : '<div class="mesto-gosta">Nema rezervisano mesto</div>');
     } else if (r.status === 'vec') {
       html = ikona('i-x') + '<div class="naslov">VEĆ UŠAO</div><div class="ime">' + ime(r.gost) + '</div>'
-        + '<div class="detalj">u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '</div>'
+        + '<div class="detalj">u ' + esc(r.gost.vreme) + ', upisao ' + esc(r.gost.upisao) + '</div>' + upozorenjeMesta(r.gost)
         + (r.gost.mesto ? blokMesta(saGostima(r.gost)) : '');
     } else if (r.status === 'sukob') {
       html = ikona('i-x') + '<div class="naslov">PAŽNJA: KOD JE UPOTREBLJEN DVAPUT</div><div class="ime">' + ime(r.gost) + '</div>'
@@ -930,7 +937,7 @@
     boja(klasa);
     el.innerHTML = html;
     rezultatOtvoren = true;
-    ton(klasa === 'ok');
+    ton(klasa === 'ok' || r.status === 'ok');
     clearTimeout(tajmerRezultata);
     // bez samozatvaranja: ekran ostaje dok ga vratar ne dodirne
   }
@@ -1079,7 +1086,7 @@
     let html = nadjeni.slice(0, 40).map((g, i) => '<li class="' + (pm && g.mesto ? 'ne' : 'klik') + '" data-osoba="' + esc(g.broj) + '" style="animation-delay:' + Math.min(i, 10) * 25 + 'ms"><div><div class="ko">' + ime(g)
       + '</div><div class="sta">' + esc(opisGosta(g)) + '</div></div>'
       + (pm && g.mesto ? '<span class="znak">ima mesto ' + esc(kratkoMesto(g)) + '</span>' : pm ? '<span class="znak bez">smesti ovde</span>'
-        : g.stigao ? '<span class="znak">ušao ' + esc(g.vreme) + '</span>' : g.mesto ? '<span class="znak">' + esc(kratkoMesto(g)) + '</span>'
+        : g.stigao ? '<span class="znak">ušao ' + esc(g.vreme) + '</span>' : g.mesto ? '<span class="znak' + (saPozivnice(g) ? ' presnimljen' : '') + '">' + esc(kratkoMesto(g)) + (saPozivnice(g) ? ' · promenjeno' : '') + '</span>'
         : '<span class="znak bez">bez mesta</span>') + '</li>').join('');
     if (!upit) html = '<li class="napomena">' + (pm ? 'Upišite ime osobe sa spiska koja nema mesto.' : 'Upišite ime, prezime, broj gosta ili telefon.') + '</li>';
     else if (!nadjeni.length) html = '<li class="napomena">Nema takvog gosta.</li>';
@@ -1204,7 +1211,7 @@
     let html = '';
     if (g) {
       html += '<div class="ime-osobe">' + ime(g) + '</div><div class="sta">' + esc(opisGosta(g)) + '</div>';
-      html += g.mesto ? '<div class="stanje">' + punoMesto(g) + '<br>' + ulazOpis(g.ulaz) + (g.stigao ? '<br>ušao u ' + esc(g.vreme) : '') + '</div>'
+      html += g.mesto ? '<div class="stanje">' + punoMesto(g) + '<br>' + ulazOpis(g.ulaz) + (g.stigao ? '<br>ušao u ' + esc(g.vreme) : '') + '</div>' + upozorenjeMesta(g)
         : '<div class="stanje bez">Nema mesto. Dobiće ga sada' + (g.grupa ? ', uz grupu ' + esc(g.grupa) : '') + '.</div>';
     } else {
       html += '<div class="polje"><svg><use href="#i-nova-osoba"/></svg><input id="osoba-novo" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Ime i prezime" aria-label="Ime i prezime" value="' + esc(osoba.novo) + '"></div>'
@@ -1328,6 +1335,16 @@
   // stigao, rezervisano (mesto ima vlasnika koji nije stigao) i slobodno. Osoba se bira lupom (ili pretragom sa glavnog
   // ekrana) ili dodirom na mesto: mapa se uveća na njen red, a ispod je kartica, ista svuda, sa „Upiši dolazak“.
   let sala = [], rezervisano = new Set(), verzija = 0, osvezenoU = 0;
+  let presnimljeni = {}, rezervisanoZa = {};  // broj → 'Deo|Red|Mesto' sa pozivnice; ključ mesta → za koga (npr. Tehnika)
+  // štab 16.11.2026: pozivnice su poslate; kad osoba sedi drugde nego što piše na pozivnici, to se upadljivo pokaže
+  function saPozivnice(g) {
+    const p = g && presnimljeni[g.broj];
+    if (!p || !g.mesto || p === kljucMesta(g.deo, g.redSale, g.mesto)) return null;
+    const [d, r, m] = p.split('|');
+    return d + ' red ' + r + ' mesto ' + m;
+  }
+  const upozorenjeMesta = (g) => { const p = saPozivnice(g); return p ? '<div class="presnimljeno"><b>MESTO PROMENJENO</b>Na pozivnici piše: ' + esc(p)
+    + '<br>Sada sedi: ' + esc(g.deo + ' red ' + g.redSale + ' mesto ' + g.mesto) + '</div>' : ''; };
   let izabran = null;  // broj izabrane osobe
   let izabranoMesto = null;  // ključ izabranog slobodnog mesta (kartica „Slobodno mesto“)
   const kljucMesta = (deo, red, m) => deo + '|' + red + '|' + Number(m);
@@ -1336,7 +1353,11 @@
   const ulazMesta = ([deo, red, m]) => { const r = sala.find((x) => x.deo === deo && x.red === red); return String(r && Number(m) > Math.floor((r.mesta + 1) / 2) ? 2 : 1); };
   function primiSalu(o) {
     if (o.sala) sala = o.sala.map((r) => ({ deo: r[0], red: r[1], mesta: Number(r[2]) }));
-    if (o.rezervisano) rezervisano = new Set(o.rezervisano.map((r) => kljucMesta(r[0], r[1], r[2])));
+    if (o.rezervisano) {
+      rezervisano = new Set(o.rezervisano.map((r) => kljucMesta(r[0], r[1], r[2])));
+      rezervisanoZa = {}; o.rezervisano.forEach((r) => { if (r[3]) rezervisanoZa[kljucMesta(r[0], r[1], r[2])] = r[3]; });
+    }
+    if (o.presnimljeni) presnimljeni = o.presnimljeni;
     if (o.verzija !== undefined) verzija = o.verzija;
     osvezenoU = Date.now();
   }
@@ -1546,7 +1567,7 @@
   function dodirMesta(m) {
     const g = gostNaMestu()[m];
     if (g) return izaberi(g, false);
-    if (rezervisano.has(m)) return poruka('Rezervisano: ' + opisMesta(m));
+    if (rezervisano.has(m)) return poruka('Rezervisano' + (rezervisanoZa[m] ? ' za ' + rezervisanoZa[m] : '') + ': ' + opisMesta(m));
     izaberiMesto(m);
   }
   // Slobodno mesto (štab 16.11.2026): kartica „Slobodno mesto“ sa dugmetom „Dodaj osobu ovde“
@@ -1615,7 +1636,7 @@
     const d = g.gostOd && gosti.find((x) => x.broj === g.gostOd);
     const uz = gosti.filter((x) => x.gostOd === g.broj).length;
     const sta = d ? 'gost od: ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga) + (uz ? ' · +' + brojGostiju(uz) : '');
-    const mesto = g.mesto ? punoMesto(g) + '<br>' + ulazOpis(g.ulaz) : 'nema mesto';
+    const mesto = (g.mesto ? punoMesto(g) + '<br>' + ulazOpis(g.ulaz) : 'nema mesto') + upozorenjeMesta(g);
     const u = uToku.get(g.broj);
     const dno = u ? '<span class="k-stanje u-toku"><span class="vrti"></span>' + esc(u.tekst) + '</span>' : g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
         + '>Obriši dolazak</button>'
