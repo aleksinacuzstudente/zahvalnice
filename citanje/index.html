@@ -107,6 +107,8 @@
   .nazad { flex: none; width: 64px; background: var(--povrs); border: 1.5px solid var(--linija); font-size: 24px; }
   .nazad:disabled { opacity: .35; }
   .imena li.nije { opacity: .55; }
+  .imena .novo { font-style: normal; font-size: .55em; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; vertical-align: middle;
+    padding: 2px 8px; border-radius: 999px; border: 2px solid currentColor; }
   .imena li.nije small { font-size: .7em; text-transform: uppercase; letter-spacing: .04em; }
   .primili.nema { cursor: default; font-weight: 600; color: var(--tekst2); }
   .prijava { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center; }
@@ -205,7 +207,8 @@
   // šalje samo gde smo (p) i ko je primio. Na 3 s se pita verzija; kad se promeni (skeniranje, drugi telefon), stiže
   // samo stanje: ko je stigao, ko je primio i gde smo.
   let spisak = [], N = 0, p = 0, stigli = new Set(), primili = new Set(), verzija = 0, uvecana = '';
-  let zakasneliGore = null;  // brojevi zakasnelih koji su upravo na bini (izlazak posle poslednjeg)
+  let zakasneliGore = null;
+  let oznakaSpiska = '', novi = new Set();  // oznaka učitanog spiska; brojevi dopisani dok je čitanje otvoreno (oznaka „novo“)  // brojevi zakasnelih koji su upravo na bini (izlazak posle poslednjeg)
   const red = [];  // radnje za server: {a: 'uru-p'|'uru-primio', ...}
 
   // 1..N: zaključani izlasci; N+1: zakasneli na bini (zamrznuti kad su izašli); posle toga novi zakasneli
@@ -280,7 +283,7 @@
     t.ljudi.forEach((x) => { if (!grupe.length || grupe[grupe.length - 1].naziv !== x.grupa) grupe.push({ naziv: x.grupa, ljudi: [] }); grupe[grupe.length - 1].ljudi.push(x); });
     return '<div class="sadrzaj">' + grupe.map((g) => '<div class="grupa"><div class="naziv">' + esc(g.naziv) + '</div>'
       + (mesto(g.naziv) ? '<div class="mesto">' + esc(mesto(g.naziv)) + '</div>' : '')
-      + '<ul class="imena">' + g.ljudi.map((x) => stigli.has(x.broj) ? '<li>' + esc(x.ime) + '</li>'
+      + '<ul class="imena">' + g.ljudi.map((x) => stigli.has(x.broj) ? '<li>' + esc(x.ime) + (novi.has(x.broj) ? ' <em class="novo">novo</em>' : '') + '</li>'
         : '<li class="nije"><s>' + esc(x.ime) + '</s> <small>nije stigao</small></li>').join('') + '</ul></div>').join('') + '</div>';
   }
   const dugmeUvecaj = (k) => '<button class="uvecaj" data-uvecaj="' + k + '" aria-label="' + (uvecana === k ? 'Umanji' : 'Uvećaj') + ' karticu">'
@@ -388,6 +391,7 @@
     if (red.length || obradjuje || document.hidden) return;
     try {
       const o = await server('verzija');
+      if (o.spisak !== undefined && (o.spisak || '') !== oznakaSpiska) return await dopuniSpisak();
       if (o.verzija === verzija) return;
       const s = await server('uru-stanje');
       verzija = s.verzija;
@@ -405,11 +409,38 @@
     ekran('prijava');
     $('prijava-poruka').textContent = t || '';
   }
+  // štab 16.11.2026: dopisan na binu (kao Mladen) stiže sam, bez osvežavanja stranice. Spisak je zaključan: dopuna samo
+  // dodaje ljude u njihov izlazak, niko postojeći ne menja izlazak, pa kartice ne skaču.
+  const uSpisak = (o) => o.spisak.map(([rb, izl, broj, ime, grupa]) => ({ rb, izl, broj: String(broj), ime, grupa }));
+  async function dopuniSpisak() {
+    const o = await server('uru');
+    if (red.length) return;  // radnja čeka: sledeća provera
+    const bilo = new Set(spisak.map((x) => x.broj));
+    spisak = uSpisak(o);
+    N = spisak.reduce((m, x) => Math.max(m, x.izl), 0);
+    oznakaSpiska = o.oznaka || '';
+    const dodati = spisak.filter((x) => !bilo.has(x.broj));
+    dodati.forEach((x) => novi.add(x.broj));
+    verzija = o.verzija;
+    stigli = new Set(o.stanje.stigli.map(String)); primili = new Set(o.stanje.primili.map(String));
+    if (o.stanje.p !== p) { p = o.stanje.p; if (p !== N + 1) zakasneliGore = null; }
+    $('gore').dataset.html = ''; $('dole').dataset.html = '';
+    crtaj();
+    if (dodati.length) status('Spisak dopunjen: ' + dodati.map((x) => x.ime + ' (izlazak ' + x.izl + ')').join(', '), 'pazi');
+  }
+  // Ekran se ne gasi dok je čitanje otvoreno (čitač drži telefon i ne dodiruje ga); posle povratka u aplikaciju ponovo
+  let budnost = null;
+  async function budan() {
+    try { if ('wakeLock' in navigator && !budnost && !document.hidden) { budnost = await navigator.wakeLock.request('screen'); budnost.addEventListener('release', () => { budnost = null; }); } } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) budan(); });
+  document.addEventListener('click', budan);
   async function pocni() {
     ekran('ucitava');
     try {
       const o = await server('uru');
-      spisak = o.spisak.map(([rb, izl, broj, ime, grupa]) => ({ rb, izl, broj: String(broj), ime, grupa }));
+      spisak = uSpisak(o);
+      oznakaSpiska = o.oznaka || '';
       N = spisak.reduce((m, x) => Math.max(m, x.izl), 0);
       if (!N) throw new Error('Spisak uručivanja još nije upisan (list Uručivanje). Javite štabu.');
       verzija = o.verzija;
@@ -418,6 +449,7 @@
       crtaj('promena');
       clearInterval(pratim);
       pratim = setInterval(prati, 3000);
+      budan();
     } catch (e) { prikaziPrijavu(e.message); }
   }
   $('prijavi').addEventListener('click', () => traziToken().then(pocni).catch((e) => ($('prijava-poruka').textContent = e.message)));
