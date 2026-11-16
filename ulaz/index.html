@@ -412,10 +412,14 @@
   .k-dno .dugme.brisi { min-height: 40px; padding: 0 14px; font-size: 14px; background: none; box-shadow: none; color: var(--lose-tekst); border: 1.5px solid var(--linija); }
   .prozor-dugmad .dugme.brisi { background: var(--lose); color: #fff; }
   .prozor-dugmad .dugme:disabled { opacity: .35; }
-  .prozor-tekst .brisi-broj { display: block; margin: 12px 0 8px; font-size: 18px; color: var(--tekst); }
-  .prozor-tekst .brisi-broj b { font-family: var(--naslovni); font-size: 26px; }
-  .brisi-polje { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; font-size: 14px; font-weight: 700; color: var(--tekst); }
-  .brisi-polje input { font: 800 24px var(--naslovni); text-align: center; letter-spacing: .1em; padding: 10px; border-radius: 12px; border: 2px solid var(--linija); background: var(--pozadina); color: var(--tekst); }
+  .prozor-kartica.kompaktno { padding-top: 20px; }
+  .prozor-kartica.kompaktno .prozor-ikona { display: none; }
+  .prozor-kartica { max-height: 100%; overflow-y: auto; }
+  .brisi-polje { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; font-size: 16px; font-weight: 700; color: var(--tekst); }
+  .brisi-polje b { font-family: var(--naslovni); font-size: 22px; }
+  .brisi-polje input { height: var(--vis-polja); font: 800 26px var(--naslovni); text-align: center; letter-spacing: .1em; padding: 0 10px; border-radius: var(--radijus-polja);
+    border: 2px solid var(--linija); background: var(--pozadina); color: var(--tekst); outline: none; -webkit-appearance: none; appearance: none; }
+  .brisi-polje input:focus { border-color: var(--akcent); box-shadow: 0 0 0 4px var(--prsten); }
   .sala > .sala-poruka { position: absolute; left: 0; right: 0; top: calc(var(--vrh) + 84px); z-index: 3; width: max-content; max-width: calc(100% - 170px); text-align: center; padding: 10px 16px; border-radius: 12px;
     background: var(--tekst); color: var(--pozadina); font-weight: 700; font-size: 14px; box-shadow: 0 8px 24px rgba(40,0,20,.3); animation: gore .3s var(--glatko) both; }
   /* Mesto gosta na zelenom ekranu posle skeniranja */
@@ -1091,7 +1095,7 @@
     uklapa = true;
     requestAnimationFrame(() => {
       uklapa = false;
-      ['pretraga', 'osoba'].forEach((id) => {
+      ['pretraga', 'osoba', 'prozor'].forEach((id) => {
         const el = $(id);
         if (el.classList.contains('skriveno') || el.classList.contains('izlazi')) return;
         const top = Math.round(vv.offsetTop) + 'px', h = Math.round(vv.height) + 'px';
@@ -1640,19 +1644,18 @@
     if (cekaUpis.some((p) => p.kod === g.kod)) return poruka('Upis još nije poslat serveru, sačekajte internet');
     const d = g.gostOd && gosti.find((x) => x.broj === g.gostOd);
     const saUlaza = /^(gost )?sa ulaza/.test(g.napomena);
-    prozor({ ikona: 'i-pazi', naslov: 'Obrisati dolazak?', tekst: '<span class="ime-gosta">' + ime(g) + '</span><br>'
-      + (d ? 'gost od: ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga)) + '<br>'
-      + (g.mesto ? esc(g.deo + ' · red ' + g.redSale + ' · mesto ' + g.mesto) + '<br>' : '')
-      + 'Ušao u ' + esc(g.vreme) + (g.upisao ? ' (upisao: ' + esc(g.upisao) + ')' : '')
-      + '<span class="brisi-broj">Broj gosta: <b>' + esc(broj) + '</b></span>'
-      + (saUlaza ? 'Dodat je na ulazu, pa se oslobađa i njegovo mesto.<br>' : 'Mesto ostaje rezervisano, a dolazak može ponovo da se upiše.<br>')
-      + '<label class="brisi-polje">Za potvrdu upišite broj gosta<input id="brisi-unos" inputmode="numeric" pattern="[0-9]*" autocomplete="off"></label>',
+    // štab 16.11.2026: kratko, polje odmah u fokusu (tastatura sa brojevima), prozor iznad tastature
+    prozor({ klasa: 'kompaktno', naslov: 'Obrisati dolazak?', tekst: '<span class="ime-gosta">' + ime(g) + '</span><br>'
+      + (d ? 'gost od ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga)) + (g.mesto ? ' · ' + esc(g.redSale + '/' + g.mesto) : '') + ' · ušao ' + esc(g.vreme)
+      + (saUlaza ? '<br>Dodat na ulazu: oslobađa se i mesto.' : '')
+      + '<label class="brisi-polje"><span>Upišite broj gosta <b>' + esc(broj) + '</b></span><input id="brisi-unos" inputmode="numeric" pattern="[0-9]*" autocomplete="off" enterkeyhint="done" aria-label="Broj gosta za potvrdu"></label>',
       dugmad: [{ tekst: 'Obriši dolazak', vrsta: 'brisi', akcija: () => obrisiDolazak(broj) }, { tekst: 'Nazad' }] });
     const dugme = $('prozor-dugmad').querySelector('.brisi'), unos = $('brisi-unos');
     dugme.disabled = true;
     unos.addEventListener('input', () => { dugme.disabled = unos.value.trim() !== broj; });
     unos.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !dugme.disabled) dugme.click(); });
-    setTimeout(() => unos.focus(), 250);
+    unos.focus({ preventScroll: true });  // odmah u dodiru, inače iPhone ne otvori tastaturu
+    uklopi(); setTimeout(uklopi, 300);
   }
   async function obrisiDolazak(broj) {
     const g = gosti.find((x) => x.broj === broj);
@@ -1807,7 +1810,8 @@
   }
   function zatvoriProzor() {
     $('prozor').classList.add('izlazi');
-    setTimeout(() => $('prozor').classList.add('skriveno'), 180);
+    const a = document.activeElement; if (a && $('prozor').contains(a)) a.blur();
+    setTimeout(() => { $('prozor').classList.add('skriveno'); $('prozor').style.top = ''; $('prozor').style.height = ''; }, 180);
   }
   $('prozor').addEventListener('click', (e) => { if (e.target === $('prozor')) zatvoriProzor(); });
 
