@@ -743,6 +743,7 @@
     if (o.greska === 'pristup') { const e = new Error('PRISTUP'); e.pristup = true; throw e; }
     if (o.greska) throw new Error(o.poruka || o.greska);
     // Server posle Google prijave daje svoju propusnicu na 24 sata (Google važi sat), pa se dalje šalje ona.
+    if (o.values && o.verzija !== undefined) verzija = o.verzija;  // odgovor sa tabelom je najnovije stanje: provera ne čita ponovo
     if (o.sesija) { token = o.sesija; tokenDo = Date.now() + (Number(o.sesijaTraje) - 60) * 1000; mejl = o.mejl || mejl; cuvaj('nova-token', { token, do: tokenDo, mejl }); }
     return o;
   }
@@ -1776,7 +1777,7 @@
     salaPita = true;
     try {
       const o = sve ? null : await server('verzija');
-      if (sve || o.verzija !== verzija) { await ucitaj(); crtajSalu(); }
+      if (sve || o.verzija !== verzija) { await ucitaj(); if (!$('sala').classList.contains('skriveno')) crtajSalu(); }
       else osvezenoU = Date.now();
     } catch (e) {}
     salaPita = false;
@@ -1933,7 +1934,10 @@
       document.documentElement.classList.remove('ucitava');
       if (kodIzUrla) { const kod = kodIzUrla; kodIzUrla = null; history.replaceState(null, '', OVDE); procitan(kod); }
       clearInterval(osvezavanje);
-      osvezavanje = setInterval(() => { if (!salje && !saljeRed && token && Date.now() < tokenDo) ucitaj().catch(() => {}); }, 30000);
+      // štab 16.11.2026: na 3 s samo mala provera verzije, cela tabela tek kad se nešto promenilo (sala ima svoju proveru)
+      osvezavanje = setInterval(() => {
+        if (!salje && !saljeRed && token && Date.now() < tokenDo && !document.hidden && $('sala').classList.contains('skriveno')) proveriSalu();
+      }, 3000);
       posalji();
     } catch (e) {
       prikaziPrijavu('');
