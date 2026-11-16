@@ -53,11 +53,11 @@
   .ekran { height: 100vh; height: 100dvh; display: flex; flex-direction: column; gap: 10px; width: 100%;
     margin: 0 auto; padding: calc(var(--vrh) + 10px) 16px calc(var(--dno) + 12px); }
 
-  /* Vrh: gde smo, šta se upravo dešava, odjava */
-  .vrh { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 15px; color: var(--tekst2); font-weight: 600; flex: none; }
-  .vrh b { color: var(--tekst); }
-  /* šta se upravo dešava: desno u istom redu, sme u dva reda, da ništa ne skače */
-  #status { font-size: 14px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-height: 20px; min-width: 0; text-align: right; color: var(--tekst2); }
+  /* Vrh je jedan red: nalog, šta se upravo dešava, zakasneli, odjava (štab 16.11.2026: broj izlazaka je u zaglavlju
+     kartica, poseban red je trošio visinu). Status sme u dva reda i potiskuje mejl, da ništa ne skače. */
+  #status { flex: 0 1 auto; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; text-align: right; color: var(--tekst2); margin-left: auto; }
+  #status:empty { display: none; }
+  #zakasnelih { flex: none; font-size: 14px; font-weight: 700; color: var(--tekst); padding: 6px 10px; border-radius: 999px; background: var(--povrs); }
   #status.lose { color: var(--lose); font-weight: 700; }
   #status.pazi { color: var(--upozorenje); font-weight: 700; }
   @media (prefers-color-scheme: dark) { #status.pazi { color: #ffd0a8; } }
@@ -65,7 +65,7 @@
   @keyframes vrti { to { transform: rotate(360deg); } }
   /* Nalog i odjava: isto kao u skeneru (ulaz/index.html, .nalogred) */
   .nalogred { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: none; }
-  .nalogred .mejl { min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nalogred .mejl { flex: 1 1 0; min-width: 0; font-size: 15px; color: var(--tekst2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .odjava { flex: none; padding: 9px 16px; border-radius: 999px; border: 1.5px solid var(--linija); background: var(--povrs);
     color: var(--tekst); font-size: 14px; font-weight: 600; }
 
@@ -88,6 +88,8 @@
     font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--tekst2); margin-bottom: 6px; flex: none; }
   .oznaka .koliko b { font-size: 1.25em; color: var(--tekst); }
   .oznaka .koliko { flex: 1; text-align: right; white-space: nowrap; letter-spacing: 0; text-transform: none; font-family: var(--telo); font-weight: 600; }
+  .oznaka > span:first-child { white-space: nowrap; }  /* „Neka se spreme“ u jednom redu i uz „izlazak 4/20“ */
+  @media (max-width: 420px) { .oznaka .koliko { font-size: 13px; } .oznaka { gap: 6px; } }
   .grupa { padding: 6px 0; border-top: 1px solid var(--linija); }
   .grupa:first-child { border-top: 0; }
   .grupa .naziv { font-family: var(--naslovni); font-weight: 700; font-size: 24px; line-height: 1.15; }
@@ -162,8 +164,7 @@
 </div>
 
 <div class="ekran skriveno" id="ekran-rad">
-  <div class="nalogred"><span class="mejl" id="nalog"></span><button class="odjava" id="odjava">Odjavi se</button></div>
-  <div class="vrh"><span id="izlazak-od"></span><span id="status" role="status" aria-live="polite"></span></div>
+  <div class="nalogred"><span class="mejl" id="nalog"></span><span id="status" role="status" aria-live="polite"></span><span id="zakasnelih" class="skriveno"></span><button class="odjava" id="odjava">Odjavi se</button></div>
   <section class="kartica" id="gore"></section>
   <section class="kartica" id="dole" aria-label="Sledeći izlazak"></section>
   <div class="dugmad">
@@ -295,7 +296,7 @@
   const osoba = (n) => n + ' ' + (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'osobe' : 'osoba');
   const mesto = (g) => { const m = /^BM (\d+)/.exec(g); return m ? OBJEKAT[Number(m[1])] || '' : ''; };
   const prazno = (t) => '<div class="prazno"><div>' + t + '</div></div>';
-  const koliko = (t) => '<span class="koliko">' + (t.zakasneli ? 'zakasneli' : 'izlazak ' + t.redni) + ' · <b>'
+  const koliko = (t) => '<span class="koliko">' + (t.zakasneli ? 'zakasneli' : 'izlazak ' + t.redni + '/' + N) + ' · <b>'
     + (t.zakasneli ? osoba(t.ljudi.length) : prisutni(t).length + ' od ' + t.ljudi.length) + '</b></span>';
   function htmlIzlazak(t) {
     const grupe = [];
@@ -336,8 +337,8 @@
     $('gore').classList.toggle('uvecana', uvecana === 'gore');
     $('dole').classList.toggle('uvecana', uvecana === 'dole');
     const z = p >= 1 && p <= N ? zakasneli().length : 0;
-    $('izlazak-od').innerHTML = (p === 0 ? '<b>' + N + '</b> izlazaka · ' + osoba(spisak.length)
-      : p <= N ? 'Na bini izlazak <b>' + p + '</b> od ' + N : 'Zakasneli') + (z ? ' · zakasnelih <b>' + z + '</b>' : '');
+    $('zakasnelih').textContent = 'zakasnelih ' + z;
+    $('zakasnelih').classList.toggle('skriveno', !z);
     postavi($('gore'), htmlGore(), anim);
     postavi($('dole'), htmlDole(), anim);
     const gl = $('glavno');
