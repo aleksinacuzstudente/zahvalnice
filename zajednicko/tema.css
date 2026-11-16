@@ -28,6 +28,7 @@
   --na-kameri: #f5ecc2;  /* Sulpher Yellow */
   --prsten: rgba(166, 44, 55, .22);  /* prsten fokusa oko polja */
   --senka: 0 2px 6px rgba(125, 19, 58, .14);
+  --pritisnuto: rgba(125, 19, 58, .1);   /* red u listi dok je pritisnut */
 
   /* Mere ekrana (štab 16.11.2026: prelaz između ekrana bez skakanja). Svaki ekran ima isti raspored:
        ivica ekrana --ivica levo i desno, vrh --razmak (plus safe area),
@@ -63,6 +64,7 @@
     --kamera: #501345;   /* Cotinga Purple */
     --prsten: rgba(245, 236, 194, .3);
     --senka: none;
+    --pritisnuto: rgba(245, 236, 194, .14);
   }
 }
 

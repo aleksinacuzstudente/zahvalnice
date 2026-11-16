@@ -213,7 +213,7 @@
   /* Dolazak: osoba, njeni gosti i mesta za sve odjednom */
   .pretraga li.klik { cursor: pointer; }
   .pretraga li.ne { opacity: .5; }
-  .pretraga li.klik:active { background: var(--povrs); }
+  .pretraga li.klik:active { background: var(--pritisnuto); }
   .pretraga .znak { font-size: 13px; font-weight: 700; white-space: nowrap; padding: 6px 10px; border-radius: 10px; border: 1.5px solid var(--linija); color: var(--tekst2); }
   .pretraga .znak.bez { border-color: var(--akcent); color: var(--akcent); }
   .pretraga .osoba-telo { flex: 1; min-height: 0; overflow-y: auto; padding: 5px 5px 12px; margin: -5px -5px 0; width: calc(100% + 10px); }  /* 5px: prsten fokusa (4px) se ne seče */
@@ -401,6 +401,9 @@
   .k-stanje { display: inline-flex; align-items: center; gap: 7px; font-weight: 700; font-size: 15px; }
   .k-stanje::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--povrs2); }
   .k-stanje.ok::before { background: var(--ok); }
+  .k-stanje.u-toku { min-height: 48px; color: var(--tekst2); }
+  .k-stanje.u-toku::before { display: none; }
+  .k-stanje.u-toku .vrti { width: 18px; height: 18px; border-width: 2.5px; }
   .k-ko { margin: 14px 0 8px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--tekst2); }
   .k-pomoc { margin-top: 8px; font-size: 13px; color: var(--tekst2); }
   .k-telo .dugmad .dugme { box-shadow: none; background: var(--pozadina); }
@@ -736,8 +739,34 @@
       const g = gosti.find((x) => x.kod === p.kod);
       if (g && !g.stigao) Object.assign(g, { stigao: 'DA', vreme: p.vreme, upisao: mejl });
     });
+    uToku.forEach((u, broj) => { const g = gosti.find((x) => x.broj === broj); if (g) Object.assign(g, u.promena); });
     stanje();
   }
+
+  // Obrazac za izmenu iz aplikacije (štab 16.11.2026: „optimistic rendering … neka to bude obrazac“): promena se odmah
+  // upiše lokalno i osoba je „u toku“ (spinner u kartici, bez dugmadi); zahtev ide serveru. Uspeh: stanje sa servera.
+  // Greška ili odbijanje: lokalna promena se skida (stanje sa servera, ili ono pre promene kad servera nema) i javlja se.
+  // Dok je izmena u toku, i osvežavanje sale (primi) zadržava lokalnu promenu, da se ništa ne vraća pa skače.
+  const uToku = new Map();  // broj → { promena, tekst }
+  async function izmena({ broj, promena, tekst, akcija, podaci, uspelo }) {
+    const g0 = gosti.find((x) => x.broj === broj);
+    const pre = g0 ? Object.fromEntries(Object.keys(promena).map((p) => [p, g0[p]])) : null;
+    uToku.set(broj, { promena, tekst });
+    if (g0) Object.assign(g0, promena);
+    stanje();
+    let o = null, izuzetak = null;
+    try { o = await server(akcija, podaci); } catch (e) { izuzetak = e; }
+    uToku.delete(broj);
+    if (o && o.values) primi(o.values);
+    else { const g = gosti.find((x) => x.broj === broj); if (g && pre) Object.assign(g, pre); }
+    if (o && o.sala) primiSalu(o);
+    const ok = !izuzetak && uspelo(o);
+    ton(ok);
+    stanje();
+    return { ok, o, izuzetak, gost: gosti.find((x) => x.broj === broj) };
+  }
+  const porukaIzuzetka = (e, rec) => e.istekla ? 'Prijava je istekla, prijavite se ponovo' : e.pristup ? 'Nalog nema pravo na tabelu' : rec + ': ' + (e.message || 'pokušajte ponovo');
+  const sad = () => new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit', hour12: false });
   function stanje() {
     const s = gosti.filter((g) => g.stigao).length, b = $('stiglo');
     if (s !== prethodno && prethodno >= 0) { b.classList.remove('skok'); void b.offsetWidth; b.classList.add('skok'); }
@@ -1556,7 +1585,7 @@
   }
 
   // Kartica: samo ono što treba na ulazu – ko je (grupa razlikuje isto ime), sa kim je, gde sedi i na koji ulaz, da li je ušao
-  let upisujeKartica = false, brise = false;
+  let upisujeKartica = false;
   function crtajKarticu() {
     const el = $('sala-kartica');
     if (izabranoMesto) {
@@ -1583,8 +1612,9 @@
     const uz = gosti.filter((x) => x.gostOd === g.broj).length;
     const sta = d ? 'gost od: ' + esc(d.ime + ' ' + d.prezime) : esc(g.grupa || g.uloga) + (uz ? ' · +' + brojGostiju(uz) : '');
     const mesto = g.mesto ? punoMesto(g) + '<br>' + ulazOpis(g.ulaz) : 'nema mesto';
-    const dno = g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
-        + (brise ? ' disabled' : '') + '>' + (brise ? '<span class="vrti"></span>Brišem…' : 'Obriši dolazak') + '</button>'
+    const u = uToku.get(g.broj);
+    const dno = u ? '<span class="k-stanje u-toku"><span class="vrti"></span>' + esc(u.tekst) + '</span>' : g.stigao ? '<span class="k-stanje ok">ušao u ' + esc(g.vreme) + '</span><button class="dugme brisi" id="k-obrisi"'
+        + '>Obriši dolazak</button>'
       : '<span class="k-stanje">nije stigao</span><button class="dugme glavno" id="k-upisi"' + (upisujeKartica ? ' disabled' : '') + '>'
         + (upisujeKartica ? '<span class="vrti"></span>Upisujem…' : g.mesto ? 'Upiši dolazak' : 'Upiši i dodeli mesto') + '</button>';
     el.innerHTML = '<button class="zatvori" id="zatvori-karticu" aria-label="Zatvori"><svg><use href="#i-zatvori"/></svg></button><div class="k-telo">'
@@ -1594,7 +1624,7 @@
     if (e.target.closest('#zatvori-karticu')) return zatvoriKarticu();
     if (e.target.closest('#k-dodaj-ovde') && izabranoMesto) return otvoriOsobu(null, izabranoMesto.split('|'));
     if (e.target.closest('#k-trazi-ovde') && izabranoMesto) return otvoriPretragu(izabranoMesto.split('|'));
-    if (e.target.closest('#k-obrisi') && !brise && izabran) return pitajBrisanje(izabran);
+    if (e.target.closest('#k-obrisi') && izabran && !uToku.has(izabran)) return pitajBrisanje(izabran);
     if (!e.target.closest('#k-upisi') || upisujeKartica || !izabran) return;
     // štab 15.11.2026: svaka izmena traži potvrdu
     const broj = izabran, g0 = gosti.find((x) => x.broj === broj) || {};
@@ -1625,34 +1655,27 @@
     setTimeout(() => unos.focus(), 250);
   }
   async function obrisiDolazak(broj) {
-    if (brise) return;
-    brise = true; crtajKarticu();
-    let poruk;
-    try {
-      const o = await server('obrisi-dolazak', { broj, potvrda: broj });
-      if (o.values) primi(o.values);
-      if (o.sala) primiSalu(o);
-      const g = gosti.find((x) => x.broj === broj);
-      poruk = o.status === 'ok' ? 'Obrisan dolazak: ' + (g ? g.ime + ' ' + g.prezime : broj) : o.status === 'nije' ? 'Dolazak je već bio obrisan' : 'Nema gosta ' + broj;
-    } catch (e) { ton(false); poruk = e.istekla ? 'Prijava je istekla, prijavite se ponovo' : e.pristup ? 'Nalog nema pravo na tabelu' : 'Nije obrisano: ' + (e.message || 'pokušajte ponovo'); }
-    brise = false;
-    poruka(poruk);
-    crtajSalu();
+    const g = gosti.find((x) => x.broj === broj);
+    if (!g || uToku.has(broj)) return;
+    const saUlaza = /^(gost )?sa ulaza/.test(g.napomena);
+    const promena = Object.assign({ stigao: '', vreme: '', upisao: '' }, saUlaza ? { deo: '', redSale: '', mesto: '', ulaz: '' } : {});
+    const r = await izmena({ broj, promena, tekst: 'Brišem dolazak…', akcija: 'obrisi-dolazak', podaci: { broj, potvrda: broj }, uspelo: (o) => o.status === 'ok' });
+    poruka(r.izuzetak ? porukaIzuzetka(r.izuzetak, 'Nije obrisano') : r.ok ? 'Obrisan dolazak: ' + g.ime + ' ' + g.prezime
+      : r.o.status === 'nije' ? 'Dolazak je već bio obrisan' : 'Nema gosta ' + broj);
   }
   // Osoba sa spiska bez mesta na izabrano slobodno mesto (pretraga iz kartice slobodnog mesta)
   async function smestiNaMesto(broj, m) {
     zatvoriPretragu();
-    let poruk;
-    try {
-      const o = await server('dolazak', { broj, gosti: [], mesto: m });
-      if (o.values) primi(o.values);
-      if (o.sala) primiSalu(o);
-      const g = gosti.find((x) => x.broj === broj);
-      if (o.status === 'ok' && g) { ton(true); izabranoMesto = null; izabran = g.broj; poruk = 'Upisan i smešten: ' + g.ime + ' ' + g.prezime; }
-      else { ton(false); poruk = o.status === 'zauzeto' ? 'To mesto je u međuvremenu zauzeto' : o.status === 'ima-mesto' ? 'Ta osoba već ima mesto' : 'Nije upisano: ' + (o.poruka || o.status); }
-    } catch (e) { ton(false); poruk = e.istekla ? 'Prijava je istekla, prijavite se ponovo' : e.pristup ? 'Nalog nema pravo na tabelu' : 'Nije upisano: ' + (e.message || 'pokušajte ponovo'); }
-    poruka(poruk);
-    crtajSalu();
+    const g = gosti.find((x) => x.broj === broj);
+    if (!g || uToku.has(broj)) return;
+    const kljuc = kljucMesta(m[0], m[1], m[2]);
+    izabranoMesto = null; izabran = broj;  // kartica odmah pokazuje osobu na mestu, sa spinerom
+    const r = await izmena({ broj, tekst: 'Upisujem…', akcija: 'dolazak', podaci: { broj, gosti: [], mesto: m }, uspelo: (o) => o.status === 'ok',
+      promena: { stigao: 'DA', vreme: sad(), upisao: mejl, deo: m[0], redSale: m[1], mesto: String(m[2]), ulaz: ulazMesta(m) } });
+    if (r.ok) return poruka('Upisan i smešten: ' + g.ime + ' ' + g.prezime);
+    if (izabran === broj && !(r.gost && r.gost.mesto)) { izabran = null; izabranoMesto = kljuc; crtajSalu(); }  // nazad na slobodno mesto
+    poruka(r.izuzetak ? porukaIzuzetka(r.izuzetak, 'Nije upisano') : r.o.status === 'zauzeto' ? 'To mesto je u međuvremenu zauzeto'
+      : r.o.status === 'ima-mesto' ? 'Ta osoba već ima mesto' : 'Nije upisano: ' + (r.o.poruka || r.o.status));
   }
   async function upisiIzKartice(broj) {
     if (upisujeKartica) return;
